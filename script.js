@@ -25,7 +25,6 @@ window.onload = function() {
     const splash = document.getElementById('splash-screen');
     let authResolved = false;
     
-    // Safety Fallback: Agar 1.5 second mein Firebase auth trigger na ho, toh login screen dikha do taaki app atke nahi
     setTimeout(() => {
         if (!authResolved && splash) {
             splash.classList.remove('active');
@@ -33,7 +32,6 @@ window.onload = function() {
         }
     }, 1500);
 
-    // Persistent Session Check via Firebase Auth
     onAuthStateChanged(auth, async (user) => {
         authResolved = true;
         if (user) {
@@ -80,19 +78,26 @@ window.handleLogin = async function() {
     
     if (!usernameInput || !passwordInput) return;
 
-    const username = usernameInput.value.trim().toLowerCase();
+    let inputVal = usernameInput.value.trim().toLowerCase();
     const password = passwordInput.value.trim();
     
-    if (!username || !password) {
+    if (!inputVal || !password) {
         alert("Please enter both User ID and Password!");
         return;
     }
 
-    const pseudoEmail = `${username}@communicateapp.com`;
+    let pseudoEmail = inputVal;
+    let cleanUsername = inputVal.split('@')[0];
+
+    // Agar user ne @ nahi lagaya hai toh custom domain jodo aur spaces hatao
+    if (!inputVal.includes('@')) {
+        cleanUsername = inputVal.replace(/\s+/g, '');
+        pseudoEmail = `${cleanUsername}@communicateapp.com`;
+    }
 
     try {
         const userCred = await signInWithEmailAndPassword(auth, pseudoEmail, password);
-        currentLoggedInUser = { uid: userCred.user.uid, userId: username };
+        currentLoggedInUser = { uid: userCred.user.uid, userId: cleanUsername };
         showScreen('home-screen');
         loadFirebaseChats();
     } catch (loginError) {
@@ -101,11 +106,11 @@ window.handleLogin = async function() {
             const uid = userCred.user.uid;
 
             await setDoc(doc(db, "users", uid), {
-                userId: username,
+                userId: cleanUsername,
                 createdAt: new Date().toISOString()
             });
 
-            currentLoggedInUser = { uid: uid, userId: username };
+            currentLoggedInUser = { uid: uid, userId: cleanUsername };
             alert("Account successfully created and logged in!");
             showScreen('home-screen');
             loadFirebaseChats();
@@ -296,5 +301,4 @@ window.sendMessage = async function() {
     } catch (e) {
         console.error("Error sending message: ", e);
     }
-}
-  
+          }
