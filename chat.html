@@ -43,7 +43,6 @@
     </div>
 
     <script type="module">
-        // URL se chat user ki details nikalna
         const urlParams = new URLSearchParams(window.location.search);
         const chatWithUid = urlParams.get('chatWith');
         const chatWithUsername = urlParams.get('username');
@@ -59,7 +58,6 @@
             }
         };
     </script>
-    <script src="script.js"></script>
+    <script type="module" src="script.js"></script>
 </body>
 </html>
-
