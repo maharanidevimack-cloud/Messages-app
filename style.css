@@ -1,0 +1,463 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+body {
+    background-color: #030305;
+    background-image: 
+        radial-gradient(circle at 20% 20%, rgba(79, 70, 229, 0.12) 0%, transparent 40%),
+        radial-gradient(circle at 80% 80%, rgba(59, 130, 246, 0.08) 0%, transparent 40%);
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    color: #fff;
+}
+
+/* Screen Switcher Control */
+.screen {
+    display: none;
+    width: 100%;
+    height: 100%;
+    justify-content: center;
+    align-items: center;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+.screen.active {
+    display: flex;
+}
+
+/* 1. Splash Screen Styling */
+.splash-content {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+.app-logo-large {
+    font-size: 45px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    width: 85px;
+    height: 85px;
+    border-radius: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 15px 30px rgba(0,0,0,0.5);
+}
+.splash-content h1 { font-size: 26px; font-weight: 700; color: #fff; letter-spacing: -0.5px; }
+.splash-content p { font-size: 13px; color: rgba(255, 255, 255, 0.4); }
+
+/* 2. Login Screen Styling */
+.auth-card {
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 35px 28px;
+    border-radius: 32px;
+    width: 90%;
+    max-width: 380px;
+    backdrop-filter: blur(30px);
+    box-shadow: 0 30px 60px rgba(0,0,0,0.8);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+.auth-card h2 { font-size: 22px; font-weight: 700; color: #fff; }
+.auth-card p { font-size: 13px; color: rgba(255,255,255,0.4); margin-bottom: 4px; }
+.auth-card input {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 14px 16px;
+    border-radius: 16px;
+    color: #fff;
+    font-size: 15px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+.auth-card input:focus { border-color: #6366f1; }
+.auth-btn {
+    background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
+    border: none;
+    padding: 14px;
+    border-radius: 16px;
+    color: #fff;
+    font-weight: 600;
+    font-size: 15px;
+    cursor: pointer;
+    box-shadow: 0 10px 20px rgba(79,70,229,0.3);
+    margin-top: 6px;
+    transition: opacity 0.2s;
+}
+.auth-btn:active { opacity: 0.9; }
+
+/* 3. Home Container Styling */
+.home-container {
+    width: 100%;
+    max-width: 410px;
+    height: 92vh;
+    background: rgba(255, 255, 255, 0.01);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 36px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8);
+    position: relative;
+}
+
+/* Header */
+.home-header {
+    padding: 26px 20px 16px 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.header-center-box {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 21px;
+    font-weight: 700;
+    letter-spacing: -0.4px;
+    color: #ffffff;
+}
+.chat-logo-svg { color: #818cf8; }
+
+/* Contact / Chat List Cards */
+.contact-list {
+    flex: 1;
+    padding: 10px 16px 80px 16px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    scroll-behavior: smooth;
+}
+.contact-list::-webkit-scrollbar { width: 3px; }
+.contact-list::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 10px; }
+
+/* Distinct Card Styling */
+.contact-card {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    padding: 14px 16px;
+    border-radius: 22px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+}
+.contact-card:hover {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.04) 100%);
+    border-color: rgba(129, 140, 248, 0.4);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 25px rgba(79, 70, 229, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* Avatar Circle */
+.contact-avatar {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, #475569 0%, #1e293b 100%);
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: 600;
+    font-size: 15px;
+    color: #e2e8f0;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    flex-shrink: 0;
+}
+
+.contact-info { flex: 1; min-width: 0; }
+.contact-header-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+.contact-name { font-weight: 600; font-size: 15px; color: #f8fafc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.contact-time { font-size: 11px; color: rgba(255, 255, 255, 0.4); flex-shrink: 0; }
+.contact-sub { font-size: 13px; color: rgba(255, 255, 255, 0.5); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Floating New Chat Button */
+.fab-btn-corner {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    background: rgba(30, 35, 55, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(15px);
+    border-radius: 16px;
+    color: #fff;
+    padding: 12px 18px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+    transition: all 0.2s ease;
+    z-index: 10;
+}
+.fab-btn-corner:hover {
+    background: rgba(45, 52, 78, 1);
+    border-color: rgba(129, 140, 248, 0.5);
+    transform: translateY(-2px);
+}
+
+/* 4. New Chat Screen Styling */
+.new-chat-card {
+    background: rgba(18, 20, 32, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    padding: 30px 24px;
+    border-radius: 32px;
+    width: 90%;
+    max-width: 380px;
+    backdrop-filter: blur(35px);
+    box-shadow: 0 35px 70px rgba(0,0,0,0.85);
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+.new-chat-card h2 { font-size: 24px; font-weight: 700; color: #fff; text-align: left; }
+
+.search-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.search-icon-svg {
+    position: absolute;
+    left: 16px;
+    color: rgba(255, 255, 255, 0.4);
+}
+.search-input-wrapper input {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    padding: 14px 16px 14px 44px;
+    border-radius: 16px;
+    color: #fff;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+.search-input-wrapper input:focus { border-color: #6366f1; }
+
+.user-preview-card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 12px 14px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.preview-avatar {
+    width: 38px;
+    height: 38px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #94a3b8;
+}
+.preview-info { display: flex; flex-direction: column; gap: 2px; }
+.preview-name { font-size: 14px; font-weight: 600; color: #f8fafc; }
+.preview-status { font-size: 12px; color: rgba(255, 255, 255, 0.45); }
+
+.cancel-btn {
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: center;
+    padding: 6px;
+    transition: color 0.2s;
+}
+.cancel-btn:hover { color: #fff; text-decoration: underline; }
+
+/* 5. Chat Screen Layout - Perfect Telegram/WhatsApp Hybrid Structure */
+.chat-container-wrapper {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+    background: #06060a;
+    overflow: hidden;
+    height: 92vh;
+    max-width: 410px;
+    width: 100%;
+    border-radius: 36px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 35px 70px rgba(0, 0, 0, 0.85);
+}
+
+/* Top Header: Sticking to the very top with just a thread-like gap */
+.floating-chat-header {
+    margin: 0px 0px 0 0px;
+    padding: 12px 18px;
+    background: rgba(40, 45, 65, 0.9);
+    border: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.22);
+    backdrop-filter: blur(35px);
+    -webkit-backdrop-filter: blur(35px);
+    border-radius: 0 0 28px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+    z-index: 10;
+}
+
+.back-arrow-btn {
+    background: transparent;
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.9;
+}
+.back-arrow-btn:hover { opacity: 1; }
+
+.chat-user-profile {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    margin-left: 8px;
+}
+.chat-header-avatar {
+    width: 42px;
+    height: 42px;
+    background: linear-gradient(135deg, #6366f1 0%, #3b82f6 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    border: 1.5px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+}
+.chat-header-info { display: flex; flex-direction: column; gap: 2px; }
+.chat-header-name { font-size: 15px; font-weight: 700; color: #ffffff; letter-spacing: -0.2px; }
+.chat-header-status { font-size: 12px; color: #4ade80; font-weight: 600; }
+
+/* Optional Action Icons on Right Side of Header if any */
+.chat-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* Messages Box */
+.chat-messages-box {
+    flex: 1;
+    padding: 16px 18px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+.message-bubble {
+    max-width: 82%;
+    padding: 12px 18px;
+    border-radius: 20px;
+    font-size: 13.5px;
+    line-height: 1.45;
+    color: #f8fafc;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.25);
+}
+.message-bubble.received {
+    background: rgba(255, 255, 255, 0.09);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    align-self: flex-start;
+    border-top-left-radius: 6px;
+}
+.message-bubble.sent {
+    background: rgba(255, 255, 255, 0.14);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    align-self: flex-end;
+    border-top-right-radius: 6px;
+}
+
+/* Bottom Input Bar: Perfectly positioned right at the bottom like WhatsApp/Telegram */
+.floating-input-container {
+    padding: 4px 10px 10px 10px;
+    background: transparent;
+    z-index: 10;
+}
+.chat-input-bar {
+    background: rgba(40, 45, 65, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(35px);
+    -webkit-backdrop-filter: blur(35px);
+    padding: 12px 16px;
+    border-radius: 34px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+.input-action-btn {
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.65);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px;
+    transition: color 0.2s;
+}
+.input-action-btn:hover { color: #fff; }
+
+.chat-input-bar input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-size: 14.5px;
+    outline: none;
+}
+.chat-input-bar input::placeholder {
+    color: rgba(255, 255, 255, 0.45);
+}
+
+.send-msg-btn {
+    background: linear-gradient(135deg, #6366f1 0%, #3b82f6 100%);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+    box-shadow: 0 6px 16px rgba(99, 102, 241, 0.5);
+}
+.send-msg-btn:hover {
+    transform: scale(1.06);
+  }
+
