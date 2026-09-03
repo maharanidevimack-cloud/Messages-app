@@ -115,28 +115,49 @@ body {
     position: relative;
 }
 
-/* Header */
-.home-header {
-    padding: 26px 20px 16px 20px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+/* Apple Style Left-Aligned Header */
+.app-header-apple {
+    padding: 16px 20px 8px 20px;
+    background: transparent;
 }
-.header-center-box {
-    display: flex;
-    align-items: center;
-    gap: 9px;
-    font-size: 21px;
+.app-title-left {
+    font-size: 24px;
     font-weight: 700;
-    letter-spacing: -0.4px;
     color: #ffffff;
+    margin: 0;
+    letter-spacing: -0.5px;
 }
-.chat-logo-svg { color: #818cf8; }
+
+/* Apple Style Search Bar */
+.apple-search-wrap {
+    padding: 8px 16px 12px 16px;
+}
+.apple-search-box {
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 10px 14px;
+    gap: 10px;
+    color: #8e99a4;
+}
+.apple-search-box input {
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-size: 14.5px;
+    width: 100%;
+    outline: none;
+}
+.apple-search-box input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
 
 /* Contact / Chat List Cards */
 .contact-list {
     flex: 1;
-    padding: 10px 16px 80px 16px;
+    padding: 6px 16px 90px 16px;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
@@ -188,31 +209,93 @@ body {
 .contact-time { font-size: 11px; color: rgba(255, 255, 255, 0.4); flex-shrink: 0; }
 .contact-sub { font-size: 13px; color: rgba(255, 255, 255, 0.5); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* Floating New Chat Button */
-.fab-btn-corner {
+/* Telegram Style Floating Action Container */
+.fab-wrapper {
     position: absolute;
     bottom: 20px;
     right: 20px;
-    background: rgba(30, 35, 55, 0.9);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
+    z-index: 100;
+}
+
+/* Collapsible Menu Box */
+.fab-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: rgba(23, 29, 38, 0.95);
     backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    padding: 8px;
     border-radius: 16px;
-    color: #fff;
-    padding: 12px 18px;
-    font-weight: 600;
-    cursor: pointer;
-    font-size: 13px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+    max-height: 200px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+.fab-menu.collapsed {
+    max-height: 0;
+    opacity: 0;
+    padding: 0 8px;
+    border: none;
+    pointer-events: none;
+}
+.fab-menu-item {
+    background: transparent;
+    border: none;
+    color: #ffffff;
     display: flex;
     align-items: center;
-    gap: 8px;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
-    transition: all 0.2s ease;
-    z-index: 10;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    width: 140px;
+    transition: background 0.2s;
 }
-.fab-btn-corner:hover {
-    background: rgba(45, 52, 78, 1);
-    border-color: rgba(129, 140, 248, 0.5);
-    transform: translateY(-2px);
+.fab-menu-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+/* Main Action Bar (Blue Plus + Arrow) */
+.fab-main-bar {
+    display: flex;
+    align-items: center;
+    background: #2481cc;
+    border-radius: 30px;
+    box-shadow: 0 6px 20px rgba(36, 129, 204, 0.45);
+    overflow: hidden;
+}
+.fab-circle-blue {
+    background: transparent;
+    border: none;
+    color: #ffffff;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+.fab-arrow-toggle {
+    background: rgba(0, 0, 0, 0.15);
+    border: none;
+    color: #ffffff;
+    width: 34px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+}
+.fab-arrow-toggle.rotated {
+    transform: rotate(180deg);
 }
 
 /* 4. New Chat Screen Styling */
@@ -306,9 +389,8 @@ body {
     box-shadow: 0 35px 70px rgba(0, 0, 0, 0.85);
 }
 
-/* Top Header: Sticking to the very top with just a thread-like gap */
 .floating-chat-header {
-    margin: 0px 0px 0 0px;
+    margin: 0px;
     padding: 12px 18px;
     background: rgba(40, 45, 65, 0.9);
     border: none;
@@ -360,15 +442,6 @@ body {
 .chat-header-name { font-size: 15px; font-weight: 700; color: #ffffff; letter-spacing: -0.2px; }
 .chat-header-status { font-size: 12px; color: #4ade80; font-weight: 600; }
 
-/* Optional Action Icons on Right Side of Header if any */
-.chat-header-actions {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    color: rgba(255, 255, 255, 0.7);
-}
-
-/* Messages Box */
 .chat-messages-box {
     flex: 1;
     padding: 16px 18px;
@@ -399,7 +472,6 @@ body {
     border-top-right-radius: 6px;
 }
 
-/* Bottom Input Bar: Perfectly positioned right at the bottom like WhatsApp/Telegram */
 .floating-input-container {
     padding: 4px 10px 10px 10px;
     background: transparent;
@@ -459,5 +531,5 @@ body {
 }
 .send-msg-btn:hover {
     transform: scale(1.06);
-                                                                           }
-                           
+    }
+               
