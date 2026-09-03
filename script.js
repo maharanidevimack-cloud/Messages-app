@@ -1,9 +1,9 @@
 // Import Firebase SDKs (Modular Version via CDN)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, collection, getDocs, addDoc, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-// Aapki Firebase Configuration Keys
+// Firebase Configuration Keys
 const firebaseConfig = {
   apiKey: "AIzaSyAE09WCUJXlI_pBMruYI9iAZzn06x3rXKQ",
   authDomain: "communicateapp-a0107.firebaseapp.com",
@@ -17,6 +17,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const googleProvider = new GoogleAuthProvider();
 
 let currentLoggedInUser = null;
 let unsubscribeMessages = null;
@@ -32,19 +33,28 @@ window.onload = function() {
         }
     }, 1500);
 
+    // Automatic session persistence check
     onAuthStateChanged(auth, async (user) => {
         authResolved = true;
         if (user) {
             try {
                 const userDoc = await getDoc(doc(db, "users", user.uid));
+                let username = user.email ? user.email.split('@')[0] : "user";
+                
                 if (userDoc.exists()) {
                     currentLoggedInUser = { uid: user.uid, ...userDoc.data() };
                 } else {
-                    currentLoggedInUser = { uid: user.uid, userId: user.email.split('@')[0] };
+                    // Create user profile in Firestore if it's their first time logging in
+                    currentLoggedInUser = { uid: user.uid, userId: username };
+                    await setDoc(doc(db, "users", user.uid), {
+                        userId: username,
+                        email: user.email,
+                        createdAt: new Date().toISOString()
+                    });
                 }
             } catch (e) {
-                console.error("Error fetching user doc:", e);
-                currentLoggedInUser = { uid: user.uid, userId: user.email.split('@')[0] };
+                console.error("Error fetching/creating user doc:", e);
+                currentLoggedInUser = { uid: user.uid, userId: user.email ? user.email.split('@')[0] : "user" };
             }
 
             if (splash) splash.classList.remove('active');
@@ -71,52 +81,31 @@ function showScreen(screenId) {
     }
 }
 
-// Custom User ID & Password Login / Signup Handler with Firebase
-window.handleLogin = async function() {
-    const usernameInput = document.getElementById('username-input');
-    const passwordInput = document.getElementById('password-input');
-    
-    if (!usernameInput || !passwordInput) return;
-
-    let inputVal = usernameInput.value.trim().toLowerCase();
-    const password = passwordInput.value.trim();
-    
-    if (!inputVal || !password) {
-        alert("Please enter both User ID and Password!");
-        return;
-    }
-
-    let pseudoEmail = inputVal;
-    let cleanUsername = inputVal.split('@')[0];
-
-    // Agar user ne @ nahi lagaya hai toh custom domain jodo aur spaces hatao
-    if (!inputVal.includes('@')) {
-        cleanUsername = inputVal.replace(/\s+/g, '');
-        pseudoEmail = `${cleanUsername}@communicateapp.com`;
-    }
-
+// Seamless One-Click Google Sign-In Handler
+window.handleGoogleLogin = async function() {
     try {
-        const userCred = await signInWithEmailAndPassword(auth, pseudoEmail, password);
-        currentLoggedInUser = { uid: userCred.user.uid, userId: cleanUsername };
-        showScreen('home-screen');
-        loadFirebaseChats();
-    } catch (loginError) {
-        try {
-            const userCred = await createUserWithEmailAndPassword(auth, pseudoEmail, password);
-            const uid = userCred.user.uid;
+        const result = await signInWithPopup(auth, googleProvider);
+        const user = result.user;
+        let cleanUsername = user.email ? user.email.split('@')[0] : "user";
 
-            await setDoc(doc(db, "users", uid), {
+        // Check if user document already exists in Firestore
+        const userRef = doc(db, "users", user.uid);
+        const userDoc = await getDoc(userRef);
+
+        if (!userDoc.exists()) {
+            await setDoc(userRef, {
                 userId: cleanUsername,
+                email: user.email,
                 createdAt: new Date().toISOString()
             });
-
-            currentLoggedInUser = { uid: uid, userId: cleanUsername };
-            alert("Account successfully created and logged in!");
-            showScreen('home-screen');
-            loadFirebaseChats();
-        } catch (signupError) {
-            alert("Error: " + signupError.message);
         }
+
+        currentLoggedInUser = { uid: user.uid, userId: cleanUsername };
+        showScreen('home-screen');
+        loadFirebaseChats();
+    } catch (error) {
+        console.error("Google Sign-In Error:", error);
+        alert("Google Login Failed: " + error.message);
     }
 }
 
@@ -132,7 +121,7 @@ async function loadFirebaseChats() {
 
         querySnapshot.forEach((docSnap) => {
             const userData = docSnap.data();
-            if (currentLoggedInUser && userData.userId !== currentLoggedInUser.userId) {
+            if (currentLoggedInUser && userData.uid !== currentLoggedInUser.uid && userData.userId !== currentLoggedInUser.userId) {
                 const initials = userData.userId.substring(0, 2).toUpperCase();
                 
                 const card = document.createElement('div');
@@ -167,7 +156,7 @@ window.goToNewChatPage = function() {
 }
 
 window.cancelNewChat = function() {
-    window.location.href = 'index.html#home';
+    window.location.href = 'index.html';
 }
 
 window.handleUserSearch = async function(queryText) {
@@ -272,7 +261,7 @@ function initializeChatScreen() {
 }
 
 window.goBackToHome = function() {
-    window.location.href = 'index.html#home';
+    window.location.href = 'index.html';
 }
 
 window.sendMessage = async function() {
@@ -301,4 +290,4 @@ window.sendMessage = async function() {
     } catch (e) {
         console.error("Error sending message: ", e);
     }
-          }
+}
