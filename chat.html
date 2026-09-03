@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat - Communicate App</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="home-container chat-container-wrapper">
+        <!-- Floating Glassmorphic Top Header -->
+        <div class="floating-chat-header">
+            <button class="back-arrow-btn" onclick="goBackToHome()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+            </button>
+            <div class="chat-user-profile">
+                <div class="chat-header-avatar" id="chat-header-avatar">--</div>
+                <div class="chat-header-info">
+                    <span class="chat-header-name" id="chat-header-name">Loading...</span>
+                    <span class="chat-header-status">Online</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Messages Area -->
+        <div class="chat-messages-box" id="chat-messages-area">
+            <p style="text-align:center; color:rgba(255,255,255,0.4); margin-top:20px;">Messages load ho rahe hain...</p>
+        </div>
+
+        <!-- Floating Glassmorphic Message Input Bar -->
+        <div class="floating-input-container">
+            <div class="chat-input-bar">
+                <button class="input-action-btn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                </button>
+                <input type="text" id="message-input-field" placeholder="Message..." onkeypress="handleKeyPress(event)">
+                <button class="send-msg-btn" onclick="sendMessage()">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // URL se chat user ki details nikalna
+        const urlParams = new URLSearchParams(window.location.search);
+        const chatWithUid = urlParams.get('chatWith');
+        const chatWithUsername = urlParams.get('username');
+
+        if (chatWithUsername) {
+            document.getElementById('chat-header-name').innerText = chatWithUsername;
+            document.getElementById('chat-header-avatar').innerText = chatWithUsername.substring(0, 2).toUpperCase();
+        }
+
+        window.handleKeyPress = function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        };
+    </script>
+    <script src="script.js"></script>
+</body>
+</html>
+
