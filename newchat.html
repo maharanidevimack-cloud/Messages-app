@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Chat - Communicate App</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- NEW CHAT SCREEN (As per your reference image) -->
+    <div id="new-chat-screen" class="screen active">
+        <div class="new-chat-card">
+            <h2>New Chat</h2>
+            
+            <!-- Search User ID Input with Search Icon -->
+            <div class="search-input-wrapper">
+                <svg class="search-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input type="text" id="new-chat-userid" placeholder="Enter User ID" oninput="handleUserSearch(this.value)">
+            </div>
+
+            <!-- Database-ready User Preview Card -->
+            <div class="user-preview-card" id="user-preview-box" style="display: none;">
+                <div class="preview-avatar">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                </div>
+                <div class="preview-info">
+                    <span class="preview-name" id="preview-user-name">User Name</span>
+                    <span class="preview-status" id="preview-user-status">Status / Bio</span>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <button class="auth-btn" onclick="startNewChat()">Start Chat</button>
+            <button class="cancel-btn" onclick="cancelNewChat()">Cancel</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
