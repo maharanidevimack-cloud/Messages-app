@@ -44,7 +44,6 @@ window.onload = function() {
                 if (userDoc.exists()) {
                     currentLoggedInUser = { uid: user.uid, ...userDoc.data() };
                 } else {
-                    // Create user profile in Firestore if it's their first time logging in
                     currentLoggedInUser = { uid: user.uid, userId: username };
                     await setDoc(doc(db, "users", user.uid), {
                         userId: username,
@@ -59,7 +58,9 @@ window.onload = function() {
 
             if (splash) splash.classList.remove('active');
             showScreen('home-screen');
-            loadFirebaseChats();
+            
+            // Fast Local Caching Load First, then Background Sync
+            loadChatsWithCache();
             
             if (document.getElementById('chat-messages-area')) {
                 initializeChatScreen();
@@ -70,7 +71,6 @@ window.onload = function() {
         }
     });
 
-    // Setup scroll listener safely after DOM is fully loaded
     setupScrollEffect();
 };
 
@@ -91,7 +91,6 @@ window.handleGoogleLogin = async function() {
         const user = result.user;
         let cleanUsername = user.email ? user.email.split('@')[0] : "user";
 
-        // Check if user document already exists in Firestore
         const userRef = doc(db, "users", user.uid);
         const userDoc = await getDoc(userRef);
 
@@ -105,53 +104,104 @@ window.handleGoogleLogin = async function() {
 
         currentLoggedInUser = { uid: user.uid, userId: cleanUsername };
         showScreen('home-screen');
-        loadFirebaseChats();
+        loadChatsWithCache();
     } catch (error) {
         console.error("Google Sign-In Error:", error);
         alert("Google Login Failed: " + error.message);
     }
 }
 
-// Load real users from Firebase Firestore database into contact list
-async function loadFirebaseChats() {
+// --- LOCAL STORAGE CACHING SYSTEM (Excluding self-chats) ---
+async function loadChatsWithCache() {
     const listBox = document.getElementById('contact-list-box');
-    if (!listBox) return;
-    listBox.innerHTML = `<p style="text-align:center; color:rgba(255,255,255,0.4); margin-top:20px;">Loading contacts...</p>`;
+    if (!listBox || !currentLoggedInUser) return;
 
+    const cacheKey = `cached_chats_${currentLoggedInUser.uid}`;
+    const cachedData = localStorage.getItem(cacheKey);
+
+    // 1. Agar phone mein pehle se data saved hai, toh turant dikhao
+    if (cachedData) {
+        try {
+            const chatList = JSON.parse(cachedData);
+            renderChatCards(chatList);
+        } catch (e) {
+            console.error("Cache parse error", e);
+        }
+    } else {
+        listBox.innerHTML = `<p style="text-align:center; color:rgba(255,255,255,0.4); margin-top:20px;">Loading chats...</p>`;
+    }
+
+    // 2. Background mein server se sync karo
     try {
-        const querySnapshot = await getDocs(collection(db, "users"));
-        listBox.innerHTML = '';
+        const messagesSnapshot = await getDocs(collection(db, "messages"));
+        const activeUserIds = new Set();
 
-        querySnapshot.forEach((docSnap) => {
-            const userData = docSnap.data();
-            if (currentLoggedInUser && userData.uid !== currentLoggedInUser.uid && userData.userId !== currentLoggedInUser.userId) {
-                const initials = userData.userId.substring(0, 2).toUpperCase();
-                
-                const card = document.createElement('div');
-                card.className = 'contact-card';
-                card.onclick = function() {
-                    window.location.href = `chat.html?chatWith=${docSnap.id}&username=${userData.userId}`;
-                };
-                card.innerHTML = `
-                    <div class="contact-avatar">${initials}</div>
-                    <div class="contact-info">
-                        <div class="contact-header-row">
-                            <span class="contact-name">${userData.userId}</span>
-                            <span class="contact-time">Online</span>
-                        </div>
-                        <div class="contact-sub">Tap to start chatting</div>
-                    </div>
-                `;
-                listBox.appendChild(card);
+        messagesSnapshot.forEach((docSnap) => {
+            const msg = docSnap.data();
+            // Sirf wahi IDs add karein jo current user ki apni na ho
+            if (msg.senderId === currentLoggedInUser.uid && msg.receiverId !== currentLoggedInUser.uid) {
+                activeUserIds.add(msg.receiverId);
+            } else if (msg.receiverId === currentLoggedInUser.uid && msg.senderId !== currentLoggedInUser.uid) {
+                activeUserIds.add(msg.senderId);
             }
         });
 
-        if (listBox.innerHTML === '') {
-            listBox.innerHTML = `<p style="text-align:center; color:rgba(255,255,255,0.4); margin-top:20px;">No other users found yet. Use 'New Chat' to find someone!</p>`;
+        const freshChatList = [];
+        for (let targetUid of activeUserIds) {
+            const userDocRef = doc(db, "users", targetUid);
+            const userDocSnap = await getDoc(userDocRef);
+
+            if (userDocSnap.exists()) {
+                const userData = userDocSnap.data();
+                freshChatList.push({
+                    uid: targetUid,
+                    userId: userData.userId
+                });
+            }
         }
+
+        // Save fresh data to LocalStorage
+        localStorage.setItem(cacheKey, JSON.stringify(freshChatList));
+        
+        // Render updated list smoothly
+        renderChatCards(freshChatList);
+
     } catch (err) {
-        console.error("Error loading chats: ", err);
+        console.error("Background sync error: ", err);
     }
+}
+
+// Helper to render chat cards on screen
+function renderChatCards(chatList) {
+    const listBox = document.getElementById('contact-list-box');
+    if (!listBox) return;
+
+    if (!chatList || chatList.length === 0) {
+        listBox.innerHTML = `<p style="text-align:center; color:rgba(255,255,255,0.4); margin-top:20px;">Koi chat nahi hai. 'New Chat' se naya user jodein!</p>`;
+        return;
+    }
+
+    listBox.innerHTML = '';
+    chatList.forEach(chat => {
+        const initials = chat.userId.substring(0, 2).toUpperCase();
+        
+        const card = document.createElement('div');
+        card.className = 'contact-card';
+        card.onclick = function() {
+            window.location.href = `chat.html?chatWith=${chat.uid}&username=${chat.userId}`;
+        };
+        card.innerHTML = `
+            <div class="contact-avatar">${initials}</div>
+            <div class="contact-info">
+                <div class="contact-header-row">
+                    <span class="contact-name">${chat.userId}</span>
+                    <span class="contact-time">Online</span>
+                </div>
+                <div class="contact-sub">Tap to open chat</div>
+            </div>
+        `;
+        listBox.appendChild(card);
+    });
 }
 
 window.goToNewChatPage = function() {
@@ -180,7 +230,8 @@ window.handleUserSearch = async function(queryText) {
             let found = false;
             querySnapshot.forEach((docSnap) => {
                 const data = docSnap.data();
-                if (data.userId === queryText) {
+                // Agar user khud ko hi search kar raha hai toh ignore karein
+                if (data.userId === queryText && docSnap.id !== currentLoggedInUser.uid) {
                     found = true;
                     nameLabel.innerText = data.userId;
                     statusLabel.innerText = "Online - Click to chat";
@@ -207,6 +258,13 @@ window.startNewChat = function() {
         alert("Please enter a valid User ID!");
         return;
     }
+    
+    // Roko agar user khud ki ID enter kar raha hai chat karne ke liye
+    if (currentLoggedInUser && userId === currentLoggedInUser.userId) {
+        alert("Aap khud ke sath chat nahi kar sakte!");
+        return;
+    }
+
     getDocs(collection(db, "users")).then((snapshot) => {
         let targetUid = "";
         snapshot.forEach((docSnap) => {
@@ -222,7 +280,6 @@ window.startNewChat = function() {
     });
 }
 
-// Chat Screen & Realtime Message Sync Functions
 function initializeChatScreen() {
     const urlParams = new URLSearchParams(window.location.search);
     const receiverUid = urlParams.get('chatWith');
@@ -295,9 +352,6 @@ window.sendMessage = async function() {
     }
 }
 
-// --- FLOATING MENU & SCROLL CONTROLS ---
-
-// Toggle Floating Menu via Arrow Button
 window.toggleFabMenu = function() {
     const menu = document.getElementById('fabMenu');
     const arrow = document.getElementById('arrowToggleBtn');
@@ -307,7 +361,6 @@ window.toggleFabMenu = function() {
     }
 }
 
-// Auto-hide menu when user scrolls down the contact list
 function setupScrollEffect() {
     let lastScrollTop = 0;
     const contactListBox = document.getElementById('contact-list-box');
@@ -320,7 +373,6 @@ function setupScrollEffect() {
             
             if (menu && arrow) {
                 if (st > lastScrollTop && st > 20) {
-                    // Scrolling down -> Hide menu automatically
                     menu.classList.add('collapsed');
                     arrow.classList.add('rotated');
                 }
@@ -339,7 +391,6 @@ window.switchMainTab = function(tabName) {
         alert("Settings panel jaldi aayega!");
     }
     
-    // Click karne par menu band kar dein
     const menu = document.getElementById('fabMenu');
     const arrow = document.getElementById('arrowToggleBtn');
     if (menu && arrow) {
