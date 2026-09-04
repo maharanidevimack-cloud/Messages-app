@@ -481,5 +481,5 @@ window.switchMainTab = function(tabName) {
         menu.classList.add('collapsed');
         arrow.classList.add('rotated');
     }
-                      }
-      
+    }
+              
