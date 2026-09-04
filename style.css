@@ -1,524 +1,485 @@
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+// Import Firebase SDKs (Modular Version via CDN)
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc, collection, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+// Firebase Configuration Keys
+const firebaseConfig = {
+  apiKey: "AIzaSyAE09WCUJXlI_pBMruYI9iAZzn06x3rXKQ",
+  authDomain: "communicateapp-a0107.firebaseapp.com",
+  projectId: "communicateapp-a0107",
+  storageBucket: "communicateapp-a0107.firebasestorage.app",
+  messagingSenderId: "870120444707",
+  appId: "1:870120444707:web:62bed66020f5400463f296"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const googleProvider = new GoogleAuthProvider();
+
+let currentLoggedInUser = null;
+
+// --- LOCAL DEVICE STORAGE (INDEXEDDB) SYSTEM ---
+const DB_NAME = "ChatAppLocalDB";
+const DB_VERSION = 1;
+
+function openDatabase() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => resolve(request.result);
+        request.onupgradeneeded = (event) => {
+            const dbInstance = event.target.result;
+            if (!dbInstance.objectStoreNames.contains('chats')) {
+                dbInstance.createObjectStore('chats', { keyPath: 'uid' });
+            }
+            if (!dbInstance.objectStoreNames.contains('messages')) {
+                const msgStore = dbInstance.createObjectStore('messages', { keyPath: 'id' });
+                msgStore.createIndex('conversationKey', 'conversationKey', { unique: false });
+            }
+        };
+    });
 }
 
-body {
-    background-color: #f5f5f7;
-    background-image: none;
-    height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    overflow: hidden;
-    color: #1d1d1f;
+async function saveChatsToIDB(chatsArray) {
+    const dbInstance = await openDatabase();
+    return new Promise((resolve, reject) => {
+        const transaction = dbInstance.transaction('chats', 'readwrite');
+        const store = transaction.objectStore('chats');
+        store.clear();
+        chatsArray.forEach(chat => store.put(chat));
+        transaction.oncomplete = () => resolve(true);
+        transaction.onerror = () => reject(transaction.error);
+    });
 }
 
-/* Screen Switcher Control */
-.screen {
-    display: none;
-    width: 100%;
-    height: 100%;
-    justify-content: center;
-    align-items: center;
-    position: absolute;
-    top: 0;
-    left: 0;
-}
-.screen.active {
-    display: flex;
+async function getChatsFromIDB() {
+    const dbInstance = await openDatabase();
+    return new Promise((resolve, reject) => {
+        const transaction = dbInstance.transaction('chats', 'readonly');
+        const store = transaction.objectStore('chats');
+        const request = store.getAll();
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
 }
 
-/* 1. Splash Screen Styling */
-.splash-content {
-    text-align: center;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 15px;
-}
-.app-logo-large {
-    font-size: 45px;
-    background: #ffffff;
-    border: 1px solid rgba(0, 0, 0, 0.06);
-    width: 85px;
-    height: 85px;
-    border-radius: 26px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 20px 40px rgba(0,0,0,0.06);
-}
-.splash-content h1 { font-size: 26px; font-weight: 700; color: #1d1d1f; letter-spacing: -0.5px; }
-.splash-content p { font-size: 13px; color: rgba(60, 60, 67, 0.6); }
-
-/* 2. Login Screen Styling */
-.auth-card {
-    background: #ffffff;
-    border: 1px solid rgba(0, 0, 0, 0.06);
-    padding: 35px 28px;
-    border-radius: 32px;
-    width: 90%;
-    max-width: 380px;
-    box-shadow: 0 30px 60px rgba(0,0,0,0.08);
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-}
-.auth-card h2 { font-size: 22px; font-weight: 700; color: #1d1d1f; }
-.auth-card p { font-size: 13px; color: rgba(60, 60, 67, 0.6); margin-bottom: 4px; }
-.auth-card input {
-    background: #f5f5f7;
-    border: 1px solid rgba(0, 0, 0, 0.08);
-    padding: 14px 16px;
-    border-radius: 16px;
-    color: #1d1d1f;
-    font-size: 15px;
-    outline: none;
-    transition: border-color 0.2s;
-}
-.auth-card input:focus { border-color: #007aff; }
-.auth-btn {
-    background: linear-gradient(135deg, #007aff 0%, #0056b3 100%);
-    border: none;
-    padding: 14px;
-    border-radius: 16px;
-    color: #fff;
-    font-weight: 600;
-    font-size: 15px;
-    cursor: pointer;
-    box-shadow: 0 10px 20px rgba(0,122,255,0.25);
-    margin-top: 6px;
-    transition: opacity 0.2s;
-}
-.auth-btn:active { opacity: 0.9; }
-
-/* 3. Home Container Styling */
-.home-container {
-    width: 100%;
-    max-width: 410px;
-    height: 92vh;
-    background: transparent;
-    border: none;
-    border-radius: 36px;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    position: relative;
+async function saveMessageToIDB(msgId, msgData) {
+    const dbInstance = await openDatabase();
+    return new Promise((resolve, reject) => {
+        const transaction = dbInstance.transaction('messages', 'readwrite');
+        const store = transaction.objectStore('messages');
+        store.put({ id: msgId, ...msgData });
+        transaction.oncomplete = () => resolve(true);
+        transaction.onerror = () => reject(transaction.error);
+    });
 }
 
-/* Apple Style Left-Aligned Header */
-.app-header-apple {
-    padding: 16px 20px 8px 20px;
-    background: transparent;
-}
-.app-title-left {
-    font-size: 24px;
-    font-weight: 700;
-    color: #1d1d1f;
-    margin: 0;
-    letter-spacing: -0.5px;
-}
-
-/* Apple Style Search Bar */
-.apple-search-wrap {
-    padding: 8px 16px 12px 16px;
-}
-.apple-search-box {
-    display: flex;
-    align-items: center;
-    background: #ffffff;
-    border: 1px solid rgba(0, 0, 0, 0.06);
-    border-radius: 14px;
-    padding: 10px 14px;
-    gap: 10px;
-    color: #8e99a4;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
-}
-.apple-search-box input {
-    background: transparent;
-    border: none;
-    color: #1d1d1f;
-    font-size: 14.5px;
-    width: 100%;
-    outline: none;
-}
-.apple-search-box input::placeholder {
-    color: rgba(60, 60, 67, 0.4);
+async function getMessagesFromIDB(conversationKey) {
+    const dbInstance = await openDatabase();
+    return new Promise((resolve, reject) => {
+        const transaction = dbInstance.transaction('messages', 'readonly');
+        const store = transaction.objectStore('messages');
+        const index = store.index('conversationKey');
+        const request = index.getAll(conversationKey);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
 }
 
-/* Contact / Chat List Cards */
-.contact-list {
-    flex: 1;
-    padding: 6px 16px 90px 16px;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    scroll-behavior: smooth;
-}
-.contact-list::-webkit-scrollbar { width: 3px; }
-.contact-list::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.15); border-radius: 10px; }
+window.onload = function() {
+    const splash = document.getElementById('splash-screen');
+    let authResolved = false;
+    
+    setTimeout(() => {
+        if (!authResolved && splash) {
+            splash.classList.remove('active');
+            showScreen('login-screen');
+        }
+    }, 1500);
 
-/* Distinct Card Styling */
-.contact-card {
-    background: #ffffff;
-    border: 1px solid rgba(0, 0, 0, 0.05);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
-    padding: 14px 16px;
-    border-radius: 22px;
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    cursor: pointer;
-    transition: all 0.25s ease;
-}
-.contact-card:hover {
-    background: #ffffff;
-    border-color: rgba(0, 122, 255, 0.3);
-    transform: translateY(-2px);
-    box-shadow: 0 12px 28px rgba(0, 122, 255, 0.08);
-}
+    onAuthStateChanged(auth, async (user) => {
+        authResolved = true;
+        if (user) {
+            try {
+                const userDoc = await getDoc(doc(db, "users", user.uid));
+                let username = user.email ? user.email.split('@')[0] : "user";
+                
+                if (userDoc.exists()) {
+                    currentLoggedInUser = { uid: user.uid, ...userDoc.data() };
+                } else {
+                    currentLoggedInUser = { uid: user.uid, userId: username };
+                    await setDoc(doc(db, "users", user.uid), {
+                        userId: username,
+                        email: user.email,
+                        createdAt: new Date().toISOString()
+                    });
+                }
+            } catch (e) {
+                console.error("Error fetching/creating user doc:", e);
+                currentLoggedInUser = { uid: user.uid, userId: user.email ? user.email.split('@')[0] : "user" };
+            }
 
-/* Avatar Circle */
-.contact-avatar {
-    width: 48px;
-    height: 48px;
-    background: linear-gradient(135deg, #007aff 0%, #5856d6 100%);
-    border-radius: 50%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-weight: 600;
-    font-size: 15px;
-    color: #ffffff;
-    box-shadow: 0 4px 12px rgba(0, 122, 255, 0.2);
-    flex-shrink: 0;
-}
+            if (splash) splash.classList.remove('active');
+            showScreen('home-screen');
+            
+            loadChatsWithSmartSync();
+            
+            if (document.getElementById('chat-messages-area')) {
+                initializeChatScreen();
+            }
+        } else {
+            if (splash) splash.classList.remove('active');
+            showScreen('login-screen');
+        }
+    });
 
-.contact-info { flex: 1; min-width: 0; }
-.contact-header-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
-.contact-name { font-weight: 600; font-size: 15px; color: #1d1d1f; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.contact-time { font-size: 11px; color: rgba(60, 60, 67, 0.5); flex-shrink: 0; }
-.contact-sub { font-size: 13px; color: rgba(60, 60, 67, 0.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    setupScrollEffect();
+};
 
-/* Telegram Style Floating Action Container */
-.fab-wrapper {
-    position: absolute;
-    bottom: 20px;
-    right: 20px;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 10px;
-    z-index: 100;
+function showScreen(screenId) {
+    document.querySelectorAll('.screen').forEach(screen => {
+        screen.classList.remove('active');
+    });
+    const target = document.getElementById(screenId);
+    if (target) {
+        target.classList.add('active');
+    }
 }
 
-/* Collapsible Menu Box */
-.fab-menu {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(0, 0, 0, 0.08);
-    padding: 8px;
-    border-radius: 16px;
-    box-shadow: 0 15px 35px rgba(0,0,0,0.1);
-    transform-origin: bottom right;
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    opacity: 1;
-    visibility: visible;
-}
-.fab-menu.collapsed {
-    transform: scale(0.8);
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
-}
-.fab-menu-item {
-    background: transparent;
-    border: none;
-    color: #1d1d1f;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 14px;
-    border-radius: 10px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 500;
-    width: 140px;
-    transition: background 0.2s;
-}
-.fab-menu-item:hover {
-    background: rgba(0, 0, 0, 0.05);
-}
+window.handleGoogleLogin = async function() {
+    try {
+        const result = await signInWithPopup(auth, googleProvider);
+        const user = result.user;
+        let cleanUsername = user.email ? user.email.split('@')[0] : "user";
 
-/* Main Action Bar */
-.fab-main-bar {
-    display: flex;
-    align-items: center;
-    background: #007aff;
-    border-radius: 30px;
-    box-shadow: 0 8px 24px rgba(0, 122, 255, 0.35);
-    overflow: hidden;
-}
-.fab-circle-blue {
-    background: transparent;
-    border: none;
-    color: #ffffff;
-    width: 50px;
-    height: 50px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-}
-.fab-arrow-toggle {
-    background: rgba(0, 0, 0, 0.15);
-    border: none;
-    color: #ffffff;
-    width: 34px;
-    height: 50px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: transform 0.3s ease;
-}
-.fab-arrow-toggle.rotated {
-    transform: rotate(180deg);
-}
+        const userRef = doc(db, "users", user.uid);
+        const userDoc = await getDoc(userRef);
 
-/* 4. New Chat Screen Styling */
-.new-chat-card {
-    background: #ffffff;
-    border: 1px solid rgba(0, 0, 0, 0.06);
-    padding: 30px 24px;
-    border-radius: 32px;
-    width: 90%;
-    max-width: 380px;
-    box-shadow: 0 35px 70px rgba(0,0,0,0.1);
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
-}
-.new-chat-card h2 { font-size: 24px; font-weight: 700; color: #1d1d1f; text-align: left; }
-
-.search-input-wrapper {
-    position: relative;
-    display: flex;
-    align-items: center;
-}
-.search-icon-svg {
-    position: absolute;
-    left: 16px;
-    color: rgba(60, 60, 67, 0.4);
-}
-.search-input-wrapper input {
-    width: 100%;
-    background: #f5f5f7;
-    border: 1px solid rgba(0, 0, 0, 0.08);
-    padding: 14px 16px 14px 44px;
-    border-radius: 16px;
-    color: #1d1d1f;
-    font-size: 14px;
-    outline: none;
-    transition: border-color 0.2s;
-}
-.search-input-wrapper input:focus { border-color: #007aff; }
-
-.user-preview-card {
-    background: #f5f5f7;
-    border: 1px solid rgba(0, 0, 0, 0.06);
-    padding: 12px 14px;
-    border-radius: 16px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-.preview-avatar {
-    width: 38px;
-    height: 38px;
-    background: #ffffff;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #007aff;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-}
-.preview-info { display: flex; flex-direction: column; gap: 2px; }
-.preview-name { font-size: 14px; font-weight: 600; color: #1d1d1f; }
-.preview-status { font-size: 12px; color: rgba(60, 60, 67, 0.6); }
-
-.cancel-btn {
-    background: transparent;
-    border: none;
-    color: rgba(60, 60, 67, 0.6);
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    text-align: center;
-    padding: 6px;
-    transition: color 0.2s;
-}
-.cancel-btn:hover { color: #1d1d1f; text-decoration: underline; }
-
-/* 5. Chat Screen Layout */
-.chat-container-wrapper {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    position: relative;
-    background: transparent;
-    overflow: hidden;
-    height: 92vh;
-    max-width: 410px;
-    width: 100%;
-    border-radius: 36px;
-    border: none;
-    box-shadow: none;
-}
-
-.floating-chat-header {
-    margin: 10px 12px 0 12px;
-    padding: 12px 18px;
-    background: rgba(255, 255, 255, 0.85);
-    border: 1px solid rgba(0, 0, 0, 0.06);
-    backdrop-filter: blur(25px);
-    -webkit-backdrop-filter: blur(25px);
-    border-radius: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
-    z-index: 10;
-}
-
-.back-arrow-btn {
-    background: rgba(0, 0, 0, 0.04);
-    border: none;
-    color: #1d1d1f;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    transition: background 0.2s;
-}
-.back-arrow-btn:hover { background: rgba(0, 0, 0, 0.08); }
-
-.chat-user-profile {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex: 1;
-    margin-left: 12px;
-}
-.chat-header-avatar {
-    width: 40px;
-    height: 40px;
-    background: linear-gradient(135deg, #007aff 0%, #5856d6 100%);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    font-weight: 700;
-    color: #fff;
-    box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
-}
-.chat-header-info { display: flex; flex-direction: column; gap: 2px; }
-.chat-header-name { font-size: 15px; font-weight: 700; color: #1d1d1f; letter-spacing: -0.2px; }
-.chat-header-status { font-size: 12px; color: #34c759; font-weight: 600; }
-
-.chat-messages-box {
-    flex: 1;
-    padding: 16px 18px;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-}
-.message-bubble {
-    max-width: 82%;
-    padding: 12px 18px;
-    border-radius: 20px;
-    font-size: 13.5px;
-    line-height: 1.45;
-    color: #1d1d1f;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.03);
-}
-.message-bubble.received {
-    background: #ffffff;
-    border: 1px solid rgba(0, 0, 0, 0.06);
-    align-self: flex-start;
-    border-top-left-radius: 6px;
-}
-.message-bubble.sent {
-    background: #007aff;
-    color: #fff;
-    align-self: flex-end;
-    border-top-right-radius: 6px;
-}
-
-.floating-input-container {
-    padding: 4px 12px 12px 12px;
-    background: transparent;
-    z-index: 10;
-}
-.chat-input-bar {
-    background: rgba(255, 255, 255, 0.85);
-    border: 1px solid rgba(0, 0, 0, 0.06);
-    backdrop-filter: blur(25px);
-    -webkit-backdrop-filter: blur(25px);
-    padding: 10px 16px;
-    border-radius: 30px;
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
-}
-.input-action-btn {
-    background: transparent;
-    border: none;
-    color: rgba(60, 60, 67, 0.6);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 2px;
-}
-.chat-input-bar input {
-    flex: 1;
-    background: transparent;
-    border: none;
-    color: #1d1d1f;
-    font-size: 14.5px;
-    outline: none;
-}
-.chat-input-bar input::placeholder {
-    color: rgba(60, 60, 67, 0.45);
-}
-
-.send-msg-btn {
-    background: linear-gradient(135deg, #007aff 0%, #0056b3 100%);
-    border: none;
-    width: 38px;
-    height: 38px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #fff;
-    cursor: pointer;
-    flex-shrink: 0;
-    box-shadow: 0 4px 12px rgba(0, 122, 255, 0.35);
+        if (!userDoc.exists()) {
+            await setDoc(userRef, {
+                userId: cleanUsername,
+                email: user.email,
+                createdAt: new Date().toISOString()
+            });
         }
 
+        currentLoggedInUser = { uid: user.uid, userId: cleanUsername };
+        showScreen('home-screen');
+        loadChatsWithSmartSync();
+    } catch (error) {
+        console.error("Google Sign-In Error:", error);
+        alert("Google Login Failed: " + error.message);
+    }
+}
+
+async function loadChatsWithSmartSync() {
+    const listBox = document.getElementById('contact-list-box');
+    if (!listBox || !currentLoggedInUser) return;
+
+    let localChats = [];
+    try {
+        localChats = await getChatsFromIDB();
+    } catch (e) {
+        console.error("IDB read error:", e);
+    }
+
+    if (!localChats || localChats.length === 0) {
+        listBox.innerHTML = `<p style="text-align:center; color:rgba(255,255,255,0.4); margin-top:20px;">Loading chats...</p>`;
+        await syncDataFromServerAndSave();
+    } else {
+        renderChatCards(localChats);
+        // Background mein silent sync
+        syncDataFromServerAndSave();
+    }
+}
+
+async function syncDataFromServerAndSave() {
+    try {
+        const messagesSnapshot = await getDocs(collection(db, "messages"));
+        const activeUserIds = new Set();
+
+        messagesSnapshot.forEach((docSnap) => {
+            const msg = docSnap.data();
+            if (msg.senderId === currentLoggedInUser.uid && msg.receiverId !== currentLoggedInUser.uid) {
+                activeUserIds.add(msg.receiverId);
+            } else if (msg.receiverId === currentLoggedInUser.uid && msg.senderId !== currentLoggedInUser.uid) {
+                activeUserIds.add(msg.senderId);
+            }
+        });
+
+        const freshChatList = [];
+        for (let targetUid of activeUserIds) {
+            if (targetUid === currentLoggedInUser.uid) continue;
+
+            const userDocRef = doc(db, "users", targetUid);
+            const userDocSnap = await getDoc(userDocRef);
+
+            if (userDocSnap.exists()) {
+                const userData = userDocSnap.data();
+                freshChatList.push({
+                    uid: targetUid,
+                    userId: userData.userId
+                });
+            }
+        }
+
+        await saveChatsToIDB(freshChatList);
+        renderChatCards(freshChatList);
+
+        // Saare messages ko bhi local DB mein sync kar lo background mein
+        messagesSnapshot.forEach((docSnap) => {
+            const msgId = docSnap.id;
+            const msg = docSnap.data();
+            if (msg.senderId === currentLoggedInUser.uid || msg.receiverId === currentLoggedInUser.uid) {
+                const conversationKey = [msg.senderId, msg.receiverId].sort().join('_');
+                saveMessageToIDB(msgId, { id: msgId, conversationKey, ...msg });
+            }
+        });
+
+    } catch (err) {
+        console.error("Server sync error: ", err);
+    }
+}
+
+function renderChatCards(chatList) {
+    const listBox = document.getElementById('contact-list-box');
+    if (!listBox) return;
+
+    const filteredList = chatList.filter(chat => currentLoggedInUser && chat.uid !== currentLoggedInUser.uid);
+
+    if (!filteredList || filteredList.length === 0) {
+        listBox.innerHTML = `<p style="text-align:center; color:rgba(255,255,255,0.4); margin-top:20px;">Koi chat nahi hai. 'New Chat' se naya user jodein!</p>`;
+        return;
+    }
+
+    listBox.innerHTML = '';
+    filteredList.forEach(chat => {
+        const initials = chat.userId.substring(0, 2).toUpperCase();
+        
+        const card = document.createElement('div');
+        card.className = 'contact-card';
+        card.onclick = function() {
+            window.location.href = `chat.html?chatWith=${chat.uid}&username=${chat.userId}`;
+        };
+        card.innerHTML = `
+            <div class="contact-avatar">${initials}</div>
+            <div class="contact-info">
+                <div class="contact-header-row">
+                    <span class="contact-name">${chat.userId}</span>
+                    <span class="contact-time">Online</span>
+                </div>
+                <div class="contact-sub">Tap to open chat</div>
+            </div>
+        `;
+        listBox.appendChild(card);
+    });
+}
+
+window.goToNewChatPage = function() {
+    window.location.href = 'newchat.html';
+}
+
+window.cancelNewChat = function() {
+    window.location.href = 'index.html';
+}
+
+window.handleUserSearch = async function(queryText) {
+    const previewBox = document.getElementById('user-preview-box');
+    const nameLabel = document.getElementById('preview-user-name');
+    const statusLabel = document.getElementById('preview-user-status');
+
+    if (!previewBox) return;
+
+    queryText = queryText.trim().toLowerCase();
+    if (queryText.length > 0) {
+        previewBox.style.display = 'flex';
+        nameLabel.innerText = "Searching: " + queryText;
+        statusLabel.innerText = "Checking database...";
+        
+        try {
+            const querySnapshot = await getDocs(collection(db, "users"));
+            let found = false;
+            querySnapshot.forEach((docSnap) => {
+                const data = docSnap.data();
+                if (data.userId === queryText && docSnap.id !== currentLoggedInUser.uid) {
+                    found = true;
+                    nameLabel.innerText = data.userId;
+                    statusLabel.innerText = "Online - Click to chat";
+                    previewBox.onclick = () => {
+                        window.location.href = `chat.html?chatWith=${docSnap.id}&username=${data.userId}`;
+                    };
+                }
+            });
+            if (!found) {
+                nameLabel.innerText = queryText;
+                statusLabel.innerText = "User not found";
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    } else {
+        previewBox.style.display = 'none';
+    }
+}
+
+window.startNewChat = function() {
+    const userId = document.getElementById('new-chat-userid').value.trim().toLowerCase();
+    if (!userId) {
+        alert("Please enter a valid User ID!");
+        return;
+    }
+    
+    if (currentLoggedInUser && userId === currentLoggedInUser.userId) {
+        alert("Aap khud ke sath chat nahi kar sakte!");
+        return;
+    }
+
+    getDocs(collection(db, "users")).then((snapshot) => {
+        let targetUid = "";
+        snapshot.forEach((docSnap) => {
+            if (docSnap.data().userId === userId) {
+                targetUid = docSnap.id;
+            }
+        });
+        if (targetUid) {
+            window.location.href = `chat.html?chatWith=${targetUid}&username=${userId}`;
+        } else {
+            alert("User database mein nahi mila!");
+        }
+    });
+}
+
+// --- 100% LOCAL-FIRST INSTANT CHAT RENDERING ---
+async function initializeChatScreen() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const receiverUid = urlParams.get('chatWith');
+    
+    if (!receiverUid || !currentLoggedInUser) return;
+
+    const messagesArea = document.getElementById('chat-messages-area');
+    const conversationKey = [currentLoggedInUser.uid, receiverUid].sort().join('_');
+
+    // Sirf aur sirf local database (IndexedDB) se data uthayega, bina network wait kiye!
+    try {
+        const localMessages = await getMessagesFromIDB(conversationKey);
+        if (localMessages && localMessages.length > 0) {
+            localMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+            messagesArea.innerHTML = "";
+            localMessages.forEach(msg => {
+                appendMessageBubble(msg, messagesArea);
+            });
+            messagesArea.scrollTop = messagesArea.scrollHeight;
+        } else {
+            messagesArea.innerHTML = `<p style="text-align:center; color:rgba(255,255,255,0.4); margin-top:20px;">Abhi koi message nahi hai. Pehla message bhejein!</p>`;
+        }
+    } catch (e) {
+        console.error("IDB messages load error:", e);
+        messagesArea.innerHTML = `<p style="text-align:center; color:rgba(255,255,255,0.4); margin-top:20px;">No local messages found.</p>`;
+    }
+}
+
+function appendMessageBubble(msg, messagesArea) {
+    const bubble = document.createElement('div');
+    bubble.className = `message-bubble ${msg.senderId === currentLoggedInUser.uid ? 'sent' : 'received'}`;
+    bubble.innerText = msg.text;
+    messagesArea.appendChild(bubble);
+}
+
+window.goBackToHome = function() {
+    window.location.href = 'index.html';
+}
+
+window.sendMessage = async function() {
+    const inputField = document.getElementById('message-input-field');
+    if (!inputField) return;
+    
+    const msgText = inputField.value.trim();
+    if (msgText === "" || !currentLoggedInUser) return;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const receiverUid = urlParams.get('chatWith');
+    
+    if (!receiverUid) {
+        alert("Receiver select nahi hai!");
+        return;
+    }
+
+    try {
+        const conversationKey = [currentLoggedInUser.uid, receiverUid].sort().join('_');
+        const newMsgData = {
+            senderId: currentLoggedInUser.uid,
+            receiverId: receiverUid,
+            text: msgText,
+            timestamp: new Date().toISOString(),
+            conversationKey: conversationKey
+        };
+
+        // 1. Turant local UI par dikhao aur local DB me save karo (Instant Response)
+        const messagesArea = document.getElementById('chat-messages-area');
+        const placeholder = messagesArea.querySelector('p');
+        if (placeholder) {
+            messagesArea.innerHTML = "";
+        }
+        appendMessageBubble(newMsgData, messagesArea);
+        messagesArea.scrollTop = messagesArea.scrollHeight;
+        inputField.value = "";
+
+        // 2. Background mein Firebase par bhej do taaki doosre user tak pahunch sake
+        const docRef = await addDoc(collection(db, "messages"), newMsgData);
+        await saveMessageToIDB(docRef.id, { id: docRef.id, ...newMsgData });
+
+    } catch (e) {
+        console.error("Error sending message: ", e);
+    }
+}
+
+window.toggleFabMenu = function() {
+    const menu = document.getElementById('fabMenu');
+    const arrow = document.getElementById('arrowToggleBtn');
+    if (menu && arrow) {
+        menu.classList.toggle('collapsed');
+        arrow.classList.toggle('rotated');
+    }
+}
+
+function setupScrollEffect() {
+    let lastScrollTop = 0;
+    const contactListBox = document.getElementById('contact-list-box');
+    
+    if (contactListBox) {
+        contactListBox.addEventListener('scroll', function() {
+            let st = contactListBox.scrollTop;
+            const menu = document.getElementById('fabMenu');
+            const arrow = document.getElementById('arrowToggleBtn');
+            
+            if (menu && arrow) {
+                if (st > lastScrollTop && st > 20) {
+                    menu.classList.add('collapsed');
+                    arrow.classList.add('rotated');
+                }
+            }
+            lastScrollTop = st <= 0 ? 0 : st;
+        });
+    }
+}
+
+window.switchMainTab = function(tabName) {
+    if (tabName === 'chats') {
+        alert("Aap already Chats tab par hain.");
+    } else if (tabName === 'contacts') {
+        alert("Contacts section open ho raha hai...");
+    } else if (tabName === 'settings') {
+        alert("Settings panel jaldi aayega!");
+    }
+    
+    const menu = document.getElementById('fabMenu');
+    const arrow = document.getElementById('arrowToggleBtn');
+    if (menu && arrow) {
+        menu.classList.add('collapsed');
+        arrow.classList.add('rotated');
+    }
+                }
+    
