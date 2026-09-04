@@ -69,6 +69,9 @@ window.onload = function() {
             showScreen('login-screen');
         }
     });
+
+    // Setup scroll listener safely after DOM is fully loaded
+    setupScrollEffect();
 };
 
 function showScreen(screenId) {
@@ -289,5 +292,58 @@ window.sendMessage = async function() {
         inputField.value = "";
     } catch (e) {
         console.error("Error sending message: ", e);
+    }
+}
+
+// --- FLOATING MENU & SCROLL CONTROLS ---
+
+// Toggle Floating Menu via Arrow Button
+window.toggleFabMenu = function() {
+    const menu = document.getElementById('fabMenu');
+    const arrow = document.getElementById('arrowToggleBtn');
+    if (menu && arrow) {
+        menu.classList.toggle('collapsed');
+        arrow.classList.toggle('rotated');
+    }
+}
+
+// Auto-hide menu when user scrolls down the contact list
+function setupScrollEffect() {
+    let lastScrollTop = 0;
+    const contactListBox = document.getElementById('contact-list-box');
+    
+    if (contactListBox) {
+        contactListBox.addEventListener('scroll', function() {
+            let st = contactListBox.scrollTop;
+            const menu = document.getElementById('fabMenu');
+            const arrow = document.getElementById('arrowToggleBtn');
+            
+            if (menu && arrow) {
+                if (st > lastScrollTop && st > 20) {
+                    // Scrolling down -> Hide menu automatically
+                    menu.classList.add('collapsed');
+                    arrow.classList.add('rotated');
+                }
+            }
+            lastScrollTop = st <= 0 ? 0 : st;
+        });
+    }
+}
+
+window.switchMainTab = function(tabName) {
+    if (tabName === 'chats') {
+        alert("Aap already Chats tab par hain.");
+    } else if (tabName === 'contacts') {
+        alert("Contacts section open ho raha hai...");
+    } else if (tabName === 'settings') {
+        alert("Settings panel jaldi aayega!");
+    }
+    
+    // Click karne par menu band kar dein
+    const menu = document.getElementById('fabMenu');
+    const arrow = document.getElementById('arrowToggleBtn');
+    if (menu && arrow) {
+        menu.classList.add('collapsed');
+        arrow.classList.add('rotated');
     }
 }
