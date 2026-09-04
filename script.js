@@ -1,7 +1,7 @@
 // Import Firebase SDKs (Modular Version via CDN)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc, collection, getDocs, addDoc, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc, collection, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 // Firebase Configuration Keys
 const firebaseConfig = {
@@ -20,9 +20,8 @@ const db = getFirestore(app);
 const googleProvider = new GoogleAuthProvider();
 
 let currentLoggedInUser = null;
-let unsubscribeMessages = null;
 
-// --- ADVANCED INDEXEDDB STORAGE SYSTEM ---
+// --- LOCAL DEVICE STORAGE (INDEXEDDB) SYSTEM ---
 const DB_NAME = "ChatAppLocalDB";
 const DB_VERSION = 1;
 
@@ -188,10 +187,11 @@ async function loadChatsWithSmartSync() {
     }
 
     if (!localChats || localChats.length === 0) {
-        listBox.innerHTML = `<p style="text-align:center; color:rgba(255,255,255,0.4); margin-top:20px;">Setting up your account data...</p>`;
+        listBox.innerHTML = `<p style="text-align:center; color:rgba(255,255,255,0.4); margin-top:20px;">Loading chats...</p>`;
         await syncDataFromServerAndSave();
     } else {
         renderChatCards(localChats);
+        // Background mein silent sync
         syncDataFromServerAndSave();
     }
 }
@@ -228,6 +228,16 @@ async function syncDataFromServerAndSave() {
 
         await saveChatsToIDB(freshChatList);
         renderChatCards(freshChatList);
+
+        // Saare messages ko bhi local DB mein sync kar lo background mein
+        messagesSnapshot.forEach((docSnap) => {
+            const msgId = docSnap.id;
+            const msg = docSnap.data();
+            if (msg.senderId === currentLoggedInUser.uid || msg.receiverId === currentLoggedInUser.uid) {
+                const conversationKey = [msg.senderId, msg.receiverId].sort().join('_');
+                saveMessageToIDB(msgId, { id: msgId, conversationKey, ...msg });
+            }
+        });
 
     } catch (err) {
         console.error("Server sync error: ", err);
@@ -342,7 +352,7 @@ window.startNewChat = function() {
     });
 }
 
-// --- 100% LOCAL-FIRST CHAT RENDERING (INSTANT LOAD) ---
+// --- 100% LOCAL-FIRST INSTANT CHAT RENDERING ---
 async function initializeChatScreen() {
     const urlParams = new URLSearchParams(window.location.search);
     const receiverUid = urlParams.get('chatWith');
@@ -351,16 +361,14 @@ async function initializeChatScreen() {
 
     const messagesArea = document.getElementById('chat-messages-area');
     const conversationKey = [currentLoggedInUser.uid, receiverUid].sort().join('_');
-    let displayedMessageIds = new Set();
 
-    // 1. TURANT Local IndexedDB se load karo (Bina "Loading" dikhaye instant)
+    // Sirf aur sirf local database (IndexedDB) se data uthayega, bina network wait kiye!
     try {
         const localMessages = await getMessagesFromIDB(conversationKey);
         if (localMessages && localMessages.length > 0) {
             localMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
             messagesArea.innerHTML = "";
             localMessages.forEach(msg => {
-                displayedMessageIds.add(msg.id);
                 appendMessageBubble(msg, messagesArea);
             });
             messagesArea.scrollTop = messagesArea.scrollHeight;
@@ -369,42 +377,8 @@ async function initializeChatScreen() {
         }
     } catch (e) {
         console.error("IDB messages load error:", e);
+        messagesArea.innerHTML = `<p style="text-align:center; color:rgba(255,255,255,0.4); margin-top:20px;">No local messages found.</p>`;
     }
-
-    // 2. Background mein Firebase se sync karo taaki naye messages apne aap aate rahein
-    const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
-    
-    if (unsubscribeMessages) unsubscribeMessages();
-
-    unsubscribeMessages = onSnapshot(q, (snapshot) => {
-        snapshot.forEach((docSnap) => {
-            const msgId = docSnap.id;
-            const msg = docSnap.data();
-            const isRelevant = 
-                (msg.senderId === currentLoggedInUser.uid && msg.receiverId === receiverUid) ||
-                (msg.senderId === receiverUid && msg.receiverId === currentLoggedInUser.uid);
-
-            if (isRelevant) {
-                const fullMsgObj = { id: msgId, conversationKey, ...msg };
-                
-                // Background mein IDB me save karo
-                saveMessageToIDB(msgId, fullMsgObj);
-
-                // Agar yeh message screen par nahi hai, tabhi dikhao
-                if (!displayedMessageIds.has(msgId)) {
-                    displayedMessageIds.add(msgId);
-                    
-                    const placeholder = messagesArea.querySelector('p');
-                    if (placeholder) {
-                        messagesArea.innerHTML = "";
-                    }
-
-                    appendMessageBubble(fullMsgObj, messagesArea);
-                    messagesArea.scrollTop = messagesArea.scrollHeight;
-                }
-            }
-        });
-    });
 }
 
 function appendMessageBubble(msg, messagesArea) {
@@ -443,10 +417,20 @@ window.sendMessage = async function() {
             conversationKey: conversationKey
         };
 
+        // 1. Turant local UI par dikhao aur local DB me save karo (Instant Response)
+        const messagesArea = document.getElementById('chat-messages-area');
+        const placeholder = messagesArea.querySelector('p');
+        if (placeholder) {
+            messagesArea.innerHTML = "";
+        }
+        appendMessageBubble(newMsgData, messagesArea);
+        messagesArea.scrollTop = messagesArea.scrollHeight;
+        inputField.value = "";
+
+        // 2. Background mein Firebase par bhej do taaki doosre user tak pahunch sake
         const docRef = await addDoc(collection(db, "messages"), newMsgData);
         await saveMessageToIDB(docRef.id, { id: docRef.id, ...newMsgData });
 
-        inputField.value = "";
     } catch (e) {
         console.error("Error sending message: ", e);
     }
@@ -497,5 +481,5 @@ window.switchMainTab = function(tabName) {
         menu.classList.add('collapsed');
         arrow.classList.add('rotated');
     }
-            }
-  
+                      }
+      
