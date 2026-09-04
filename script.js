@@ -20,6 +20,7 @@ const db = getFirestore(app);
 const googleProvider = new GoogleAuthProvider();
 
 let currentLoggedInUser = null;
+let backgroundSyncInterval = null;
 
 // --- LOCAL DEVICE STORAGE (INDEXEDDB) SYSTEM ---
 const DB_NAME = "ChatAppLocalDB";
@@ -126,6 +127,7 @@ window.onload = function() {
             showScreen('home-screen');
             
             loadChatsWithSmartSync();
+            startBackgroundSyncLoop();
             
             if (document.getElementById('chat-messages-area')) {
                 initializeChatScreen();
@@ -138,6 +140,16 @@ window.onload = function() {
 
     setupScrollEffect();
 };
+
+function startBackgroundSyncLoop() {
+    if (backgroundSyncInterval) clearInterval(backgroundSyncInterval);
+    // Har 6 second mein ek baar silent background sync chalega taaki naye messages local DB mein aa jayein
+    backgroundSyncInterval = setInterval(() => {
+        if (currentLoggedInUser) {
+            syncDataFromServerAndSave(true);
+        }
+    }, 6000);
+}
 
 function showScreen(screenId) {
     document.querySelectorAll('.screen').forEach(screen => {
@@ -169,6 +181,7 @@ window.handleGoogleLogin = async function() {
         currentLoggedInUser = { uid: user.uid, userId: cleanUsername };
         showScreen('home-screen');
         loadChatsWithSmartSync();
+        startBackgroundSyncLoop();
     } catch (error) {
         console.error("Google Sign-In Error:", error);
         alert("Google Login Failed: " + error.message);
@@ -188,15 +201,14 @@ async function loadChatsWithSmartSync() {
 
     if (!localChats || localChats.length === 0) {
         listBox.innerHTML = `<p style="text-align:center; color:rgba(255,255,255,0.4); margin-top:20px;">Loading chats...</p>`;
-        await syncDataFromServerAndSave();
+        await syncDataFromServerAndSave(false);
     } else {
         renderChatCards(localChats);
-        // Background mein silent sync
-        syncDataFromServerAndSave();
+        syncDataFromServerAndSave(true);
     }
 }
 
-async function syncDataFromServerAndSave() {
+async function syncDataFromServerAndSave(isBackground = false) {
     try {
         const messagesSnapshot = await getDocs(collection(db, "messages"));
         const activeUserIds = new Set();
@@ -227,9 +239,11 @@ async function syncDataFromServerAndSave() {
         }
 
         await saveChatsToIDB(freshChatList);
-        renderChatCards(freshChatList);
+        if (!isBackground) {
+            renderChatCards(freshChatList);
+        }
 
-        // Saare messages ko bhi local DB mein sync kar lo background mein
+        // Messages ko local DB mein sync karna
         messagesSnapshot.forEach((docSnap) => {
             const msgId = docSnap.id;
             const msg = docSnap.data();
@@ -239,8 +253,44 @@ async function syncDataFromServerAndSave() {
             }
         });
 
+        // Agar user abhi chat screen par hai, toh naye messages screen par bhi refresh kar do
+        const urlParams = new URLSearchParams(window.location.search);
+        const receiverUid = urlParams.get('chatWith');
+        if (receiverUid && document.getElementById('chat-messages-area')) {
+            refreshActiveChatScreen(receiverUid);
+        }
+
     } catch (err) {
         console.error("Server sync error: ", err);
+    }
+}
+
+async function refreshActiveChatScreen(receiverUid) {
+    const messagesArea = document.getElementById('chat-messages-area');
+    const conversationKey = [currentLoggedInUser.uid, receiverUid].sort().join('_');
+    
+    try {
+        const localMessages = await getMessagesFromIDB(conversationKey);
+        if (localMessages && localMessages.length > 0) {
+            localMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+            
+            // Sirf tab update karo jab message count mein badlav ho
+            const currentBubbleCount = messagesArea.querySelectorAll('.message-bubble').length;
+            if (localMessages.length !== currentBubbleCount) {
+                const isAtBottom = messagesArea.scrollHeight - messagesArea.scrollTop <= messagesArea.clientHeight + 100;
+                
+                messagesArea.innerHTML = "";
+                localMessages.forEach(msg => {
+                    appendMessageBubble(msg, messagesArea);
+                });
+                
+                if (isAtBottom) {
+                    messagesArea.scrollTop = messagesArea.scrollHeight;
+                }
+            }
+        }
+    } catch (e) {
+        console.error("Refresh active chat error:", e);
     }
 }
 
@@ -362,7 +412,7 @@ async function initializeChatScreen() {
     const messagesArea = document.getElementById('chat-messages-area');
     const conversationKey = [currentLoggedInUser.uid, receiverUid].sort().join('_');
 
-    // Sirf aur sirf local database (IndexedDB) se data uthayega, bina network wait kiye!
+    // Local IndexedDB se turant load karo taaki zero delay ho!
     try {
         const localMessages = await getMessagesFromIDB(conversationKey);
         if (localMessages && localMessages.length > 0) {
@@ -379,6 +429,9 @@ async function initializeChatScreen() {
         console.error("IDB messages load error:", e);
         messagesArea.innerHTML = `<p style="text-align:center; color:rgba(255,255,255,0.4); margin-top:20px;">No local messages found.</p>`;
     }
+    
+    // Turant ek baar server se sync bhi trigger kar do taaki fresh data aa jaye
+    syncDataFromServerAndSave(true);
 }
 
 function appendMessageBubble(msg, messagesArea) {
@@ -409,7 +462,9 @@ window.sendMessage = async function() {
 
     try {
         const conversationKey = [currentLoggedInUser.uid, receiverUid].sort().join('_');
+        const tempId = "temp_" + Date.now();
         const newMsgData = {
+            id: tempId,
             senderId: currentLoggedInUser.uid,
             receiverId: receiverUid,
             text: msgText,
@@ -427,8 +482,18 @@ window.sendMessage = async function() {
         messagesArea.scrollTop = messagesArea.scrollHeight;
         inputField.value = "";
 
-        // 2. Background mein Firebase par bhej do taaki doosre user tak pahunch sake
-        const docRef = await addDoc(collection(db, "messages"), newMsgData);
+        await saveMessageToIDB(tempId, newMsgData);
+
+        // 2. Background mein Firebase par bhej do
+        const docRef = await addDoc(collection(db, "messages"), {
+            senderId: newMsgData.senderId,
+            receiverId: newMsgData.receiverId,
+            text: newMsgData.text,
+            timestamp: newMsgData.timestamp,
+            conversationKey: newMsgData.conversationKey
+        });
+        
+        // Real ID ke sath local DB update kar lo
         await saveMessageToIDB(docRef.id, { id: docRef.id, ...newMsgData });
 
     } catch (e) {
@@ -473,13 +538,4 @@ window.switchMainTab = function(tabName) {
         alert("Contacts section open ho raha hai...");
     } else if (tabName === 'settings') {
         alert("Settings panel jaldi aayega!");
-    }
-    
-    const menu = document.getElementById('fabMenu');
-    const arrow = document.getElementById('arrowToggleBtn');
-    if (menu && arrow) {
-        menu.classList.add('collapsed');
-        arrow.classList.add('rotated');
-    }
-    }
-              
+      }
