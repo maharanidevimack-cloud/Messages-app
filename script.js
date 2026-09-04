@@ -22,6 +22,74 @@ const googleProvider = new GoogleAuthProvider();
 let currentLoggedInUser = null;
 let unsubscribeMessages = null;
 
+// --- ADVANCED INDEXEDDB STORAGE SYSTEM ---
+const DB_NAME = "ChatAppLocalDB";
+const DB_VERSION = 1;
+
+function openDatabase() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => resolve(request.result);
+        request.onupgradeneeded = (event) => {
+            const dbInstance = event.target.result;
+            if (!dbInstance.objectStoreNames.contains('chats')) {
+                dbInstance.createObjectStore('chats', { keyPath: 'uid' });
+            }
+            if (!dbInstance.objectStoreNames.contains('messages')) {
+                const msgStore = dbInstance.createObjectStore('messages', { keyPath: 'id' });
+                msgStore.createIndex('conversationKey', 'conversationKey', { unique: false });
+            }
+        };
+    });
+}
+
+async function saveChatsToIDB(chatsArray) {
+    const dbInstance = await openDatabase();
+    return new Promise((resolve, reject) => {
+        const transaction = dbInstance.transaction('chats', 'readwrite');
+        const store = transaction.objectStore('chats');
+        store.clear();
+        chatsArray.forEach(chat => store.put(chat));
+        transaction.oncomplete = () => resolve(true);
+        transaction.onerror = () => reject(transaction.error);
+    });
+}
+
+async function getChatsFromIDB() {
+    const dbInstance = await openDatabase();
+    return new Promise((resolve, reject) => {
+        const transaction = dbInstance.transaction('chats', 'readonly');
+        const store = transaction.objectStore('chats');
+        const request = store.getAll();
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+}
+
+async function saveMessageToIDB(msgId, msgData) {
+    const dbInstance = await openDatabase();
+    return new Promise((resolve, reject) => {
+        const transaction = dbInstance.transaction('messages', 'readwrite');
+        const store = transaction.objectStore('messages');
+        store.put({ id: msgId, ...msgData });
+        transaction.oncomplete = () => resolve(true);
+        transaction.onerror = () => reject(transaction.error);
+    });
+}
+
+async function getMessagesFromIDB(conversationKey) {
+    const dbInstance = await openDatabase();
+    return new Promise((resolve, reject) => {
+        const transaction = dbInstance.transaction('messages', 'readonly');
+        const store = transaction.objectStore('messages');
+        const index = store.index('conversationKey');
+        const request = index.getAll(conversationKey);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+}
+
 window.onload = function() {
     const splash = document.getElementById('splash-screen');
     let authResolved = false;
@@ -33,7 +101,6 @@ window.onload = function() {
         }
     }, 1500);
 
-    // Automatic session persistence check
     onAuthStateChanged(auth, async (user) => {
         authResolved = true;
         if (user) {
@@ -59,8 +126,8 @@ window.onload = function() {
             if (splash) splash.classList.remove('active');
             showScreen('home-screen');
             
-            // Fast Local Caching Load First, then Background Sync
-            loadChatsWithCache();
+            // Intelligent Cold Start & Sync Check
+            loadChatsWithSmartSync();
             
             if (document.getElementById('chat-messages-area')) {
                 initializeChatScreen();
@@ -84,7 +151,6 @@ function showScreen(screenId) {
     }
 }
 
-// Seamless One-Click Google Sign-In Handler
 window.handleGoogleLogin = async function() {
     try {
         const result = await signInWithPopup(auth, googleProvider);
@@ -104,41 +170,44 @@ window.handleGoogleLogin = async function() {
 
         currentLoggedInUser = { uid: user.uid, userId: cleanUsername };
         showScreen('home-screen');
-        loadChatsWithCache();
+        loadChatsWithSmartSync();
     } catch (error) {
         console.error("Google Sign-In Error:", error);
         alert("Google Login Failed: " + error.message);
     }
 }
 
-// --- LOCAL STORAGE CACHING SYSTEM (Excluding self-chats) ---
-async function loadChatsWithCache() {
+// --- SMART COLD START & SYNC SYSTEM ---
+async function loadChatsWithSmartSync() {
     const listBox = document.getElementById('contact-list-box');
     if (!listBox || !currentLoggedInUser) return;
 
-    const cacheKey = `cached_chats_${currentLoggedInUser.uid}`;
-    const cachedData = localStorage.getItem(cacheKey);
-
-    // 1. Agar phone mein pehle se data saved hai, toh turant dikhao
-    if (cachedData) {
-        try {
-            const chatList = JSON.parse(cachedData);
-            renderChatCards(chatList);
-        } catch (e) {
-            console.error("Cache parse error", e);
-        }
-    } else {
-        listBox.innerHTML = `<p style="text-align:center; color:rgba(255,255,255,0.4); margin-top:20px;">Loading chats...</p>`;
+    let localChats = [];
+    try {
+        localChats = await getChatsFromIDB();
+    } catch (e) {
+        console.error("IDB read error:", e);
     }
 
-    // 2. Background mein server se sync karo
+    // Agar local database bilkul khaali hai (New device / Fresh login), toh turant Firebase se data kheencho
+    if (!localChats || localChats.length === 0) {
+        listBox.innerHTML = `<p style="text-align:center; color:rgba(255,255,255,0.4); margin-top:20px;">Setting up your account data...</p>`;
+        await syncDataFromServerAndSave();
+    } else {
+        // Agar local data hai, toh bina ek second gavaye turant dikhao
+        renderChatCards(localChats);
+        // Background mein naya update check karne ke liye sync chala do
+        syncDataFromServerAndSave();
+    }
+}
+
+async function syncDataFromServerAndSave() {
     try {
         const messagesSnapshot = await getDocs(collection(db, "messages"));
         const activeUserIds = new Set();
 
         messagesSnapshot.forEach((docSnap) => {
             const msg = docSnap.data();
-            // Sirf wahi IDs add karein jo current user ki apni na ho
             if (msg.senderId === currentLoggedInUser.uid && msg.receiverId !== currentLoggedInUser.uid) {
                 activeUserIds.add(msg.receiverId);
             } else if (msg.receiverId === currentLoggedInUser.uid && msg.senderId !== currentLoggedInUser.uid) {
@@ -160,18 +229,14 @@ async function loadChatsWithCache() {
             }
         }
 
-        // Save fresh data to LocalStorage
-        localStorage.setItem(cacheKey, JSON.stringify(freshChatList));
-        
-        // Render updated list smoothly
+        await saveChatsToIDB(freshChatList);
         renderChatCards(freshChatList);
 
     } catch (err) {
-        console.error("Background sync error: ", err);
+        console.error("Server sync error: ", err);
     }
 }
 
-// Helper to render chat cards on screen
 function renderChatCards(chatList) {
     const listBox = document.getElementById('contact-list-box');
     if (!listBox) return;
@@ -230,7 +295,6 @@ window.handleUserSearch = async function(queryText) {
             let found = false;
             querySnapshot.forEach((docSnap) => {
                 const data = docSnap.data();
-                // Agar user khud ko hi search kar raha hai toh ignore karein
                 if (data.userId === queryText && docSnap.id !== currentLoggedInUser.uid) {
                     found = true;
                     nameLabel.innerText = data.userId;
@@ -259,7 +323,6 @@ window.startNewChat = function() {
         return;
     }
     
-    // Roko agar user khud ki ID enter kar raha hai chat karne ke liye
     if (currentLoggedInUser && userId === currentLoggedInUser.userId) {
         alert("Aap khud ke sath chat nahi kar sakte!");
         return;
@@ -280,24 +343,44 @@ window.startNewChat = function() {
     });
 }
 
-function initializeChatScreen() {
+// --- INITIALIZE CHAT SCREEN WITH SMART COLD START & LOCAL CACHING ---
+async function initializeChatScreen() {
     const urlParams = new URLSearchParams(window.location.search);
     const receiverUid = urlParams.get('chatWith');
     
     if (!receiverUid || !currentLoggedInUser) return;
 
     const messagesArea = document.getElementById('chat-messages-area');
-    messagesArea.innerHTML = `<p style="text-align:center; color:rgba(255,255,255,0.4); margin-top:20px;">Messages sync ho rahe hain...</p>`;
+    messagesArea.innerHTML = `<p style="text-align:center; color:rgba(255,255,255,0.4); margin-top:20px;">Messages load ho rahe hain...</p>`;
 
+    const conversationKey = [currentLoggedInUser.uid, receiverUid].sort().join('_');
+
+    // 1. Pehle local IDB se check karo, agar data hai toh turant dikhao
+    try {
+        const localMessages = await getMessagesFromIDB(conversationKey);
+        if (localMessages && localMessages.length > 0) {
+            localMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+            messagesArea.innerHTML = "";
+            localMessages.forEach(msg => {
+                appendMessageBubble(msg, messagesArea);
+            });
+            messagesArea.scrollTop = messagesArea.scrollHeight;
+        }
+    } catch (e) {
+        console.error("IDB messages load error:", e);
+    }
+
+    // 2. Real-time Firebase listener jo naye messages aur purane data ko sync karega
     const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
     
     if (unsubscribeMessages) unsubscribeMessages();
 
     unsubscribeMessages = onSnapshot(q, (snapshot) => {
-        messagesArea.innerHTML = "";
         let count = 0;
+        messagesArea.innerHTML = "";
 
         snapshot.forEach((docSnap) => {
+            const msgId = docSnap.id;
             const msg = docSnap.data();
             const isRelevant = 
                 (msg.senderId === currentLoggedInUser.uid && msg.receiverId === receiverUid) ||
@@ -305,10 +388,12 @@ function initializeChatScreen() {
 
             if (isRelevant) {
                 count++;
-                const bubble = document.createElement('div');
-                bubble.className = `message-bubble ${msg.senderId === currentLoggedInUser.uid ? 'sent' : 'received'}`;
-                bubble.innerText = msg.text;
-                messagesArea.appendChild(bubble);
+                const fullMsgObj = { id: msgId, conversationKey, ...msg };
+                
+                // Background mein IDB par save karte jao
+                saveMessageToIDB(msgId, fullMsgObj);
+
+                appendMessageBubble(fullMsgObj, messagesArea);
             }
         });
 
@@ -318,6 +403,13 @@ function initializeChatScreen() {
 
         messagesArea.scrollTop = messagesArea.scrollHeight;
     });
+}
+
+function appendMessageBubble(msg, messagesArea) {
+    const bubble = document.createElement('div');
+    bubble.className = `message-bubble ${msg.senderId === currentLoggedInUser.uid ? 'sent' : 'received'}`;
+    bubble.innerText = msg.text;
+    messagesArea.appendChild(bubble);
 }
 
 window.goBackToHome = function() {
@@ -340,12 +432,18 @@ window.sendMessage = async function() {
     }
 
     try {
-        await addDoc(collection(db, "messages"), {
+        const conversationKey = [currentLoggedInUser.uid, receiverUid].sort().join('_');
+        const newMsgData = {
             senderId: currentLoggedInUser.uid,
             receiverId: receiverUid,
             text: msgText,
-            timestamp: new Date().toISOString()
-        });
+            timestamp: new Date().toISOString(),
+            conversationKey: conversationKey
+        };
+
+        const docRef = await addDoc(collection(db, "messages"), newMsgData);
+        await saveMessageToIDB(docRef.id, { id: docRef.id, ...newMsgData });
+
         inputField.value = "";
     } catch (e) {
         console.error("Error sending message: ", e);
@@ -397,4 +495,5 @@ window.switchMainTab = function(tabName) {
         menu.classList.add('collapsed');
         arrow.classList.add('rotated');
     }
-}
+          }
+
