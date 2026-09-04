@@ -51,9 +51,13 @@
             document.getElementById('chat-header-avatar').innerText = chatWithUsername.substring(0, 2).toUpperCase();
         }
 
-        // Direct Home Redirection on clicking back button
+        // Yeh function ab browser ki history ke mutabik theek pichle page/state par bhejega
         window.goBackToHome = function() {
-            window.location.href = 'index.html';
+            if (document.referrer && document.referrer.includes(window.location.hostname)) {
+                history.back();
+            } else {
+                window.location.href = 'index.html';
+            }
         };
 
         window.handleKeyPress = function(e) {
