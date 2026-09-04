@@ -203,7 +203,6 @@ async function syncDataFromServerAndSave() {
 
         messagesSnapshot.forEach((docSnap) => {
             const msg = docSnap.data();
-            // Yahan ensure kiya gaya hai ki khud ki UID list mein add na ho
             if (msg.senderId === currentLoggedInUser.uid && msg.receiverId !== currentLoggedInUser.uid) {
                 activeUserIds.add(msg.receiverId);
             } else if (msg.receiverId === currentLoggedInUser.uid && msg.senderId !== currentLoggedInUser.uid) {
@@ -213,7 +212,6 @@ async function syncDataFromServerAndSave() {
 
         const freshChatList = [];
         for (let targetUid of activeUserIds) {
-            // Extra safety check: Khud ka UID kabhi bhi chat list mein fetch na ho
             if (targetUid === currentLoggedInUser.uid) continue;
 
             const userDocRef = doc(db, "users", targetUid);
@@ -240,7 +238,6 @@ function renderChatCards(chatList) {
     const listBox = document.getElementById('contact-list-box');
     if (!listBox) return;
 
-    // Filter out if somehow self-ID exists in the list array
     const filteredList = chatList.filter(chat => currentLoggedInUser && chat.uid !== currentLoggedInUser.uid);
 
     if (!filteredList || filteredList.length === 0) {
@@ -345,7 +342,7 @@ window.startNewChat = function() {
     });
 }
 
-// --- INITIALIZE CHAT SCREEN ---
+// --- 100% LOCAL-FIRST CHAT RENDERING (INSTANT LOAD) ---
 async function initializeChatScreen() {
     const urlParams = new URLSearchParams(window.location.search);
     const receiverUid = urlParams.get('chatWith');
@@ -353,11 +350,10 @@ async function initializeChatScreen() {
     if (!receiverUid || !currentLoggedInUser) return;
 
     const messagesArea = document.getElementById('chat-messages-area');
-    messagesArea.innerHTML = `<p style="text-align:center; color:rgba(255,255,255,0.4); margin-top:20px;">Messages load ho rahe hain...</p>`;
-
     const conversationKey = [currentLoggedInUser.uid, receiverUid].sort().join('_');
     let displayedMessageIds = new Set();
 
+    // 1. TURANT Local IndexedDB se load karo (Bina "Loading" dikhaye instant)
     try {
         const localMessages = await getMessagesFromIDB(conversationKey);
         if (localMessages && localMessages.length > 0) {
@@ -375,6 +371,7 @@ async function initializeChatScreen() {
         console.error("IDB messages load error:", e);
     }
 
+    // 2. Background mein Firebase se sync karo taaki naye messages apne aap aate rahein
     const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
     
     if (unsubscribeMessages) unsubscribeMessages();
@@ -389,8 +386,11 @@ async function initializeChatScreen() {
 
             if (isRelevant) {
                 const fullMsgObj = { id: msgId, conversationKey, ...msg };
+                
+                // Background mein IDB me save karo
                 saveMessageToIDB(msgId, fullMsgObj);
 
+                // Agar yeh message screen par nahi hai, tabhi dikhao
                 if (!displayedMessageIds.has(msgId)) {
                     displayedMessageIds.add(msgId);
                     
@@ -497,4 +497,5 @@ window.switchMainTab = function(tabName) {
         menu.classList.add('collapsed');
         arrow.classList.add('rotated');
     }
-      }
+            }
+  
