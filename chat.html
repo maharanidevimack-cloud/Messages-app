@@ -12,7 +12,7 @@
         <!-- Floating Glassmorphic Top Header with Enlarged Back Button -->
         <div class="floating-chat-header">
             <button class="back-arrow-btn" onclick="goBackToHome()" title="Go Back">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
             </button>
             <div class="chat-user-profile">
                 <div class="chat-header-avatar" id="chat-header-avatar">--</div>
@@ -28,7 +28,7 @@
             <p style="text-align:center; color:rgba(60, 60, 67, 0.5); margin-top:20px;">Messages load ho rahe hain...</p>
         </div>
 
-        <!-- Elevated Message Input Bar to prevent mobile cutoff -->
+        <!-- Elevated Message Input Bar -->
         <div class="floating-input-container">
             <div class="chat-input-bar">
                 <button class="input-action-btn">
@@ -50,6 +50,11 @@
             document.getElementById('chat-header-name').innerText = chatWithUsername;
             document.getElementById('chat-header-avatar').innerText = chatWithUsername.substring(0, 2).toUpperCase();
         }
+
+        // Direct Home Redirection on clicking back button
+        window.goBackToHome = function() {
+            window.location.href = 'index.html';
+        };
 
         window.handleKeyPress = function(e) {
             if (e.key === 'Enter') {
