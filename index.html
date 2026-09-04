@@ -204,7 +204,7 @@
             }
 
             if (!globalChatsList || globalChatsList.length === 0) {
-                listBox.innerHTML = `<p style="text-align:center; color:rgba(255,255,255,0.4); margin-top:20px;">Loading chats...</p>`;
+                listBox.innerHTML = `<p style="text-align:center; color:#64748b; margin-top:20px;">Loading chats...</p>`;
                 await syncDataFromServerAndSave();
             } else {
                 renderChatCards(globalChatsList);
@@ -250,7 +250,7 @@
             const filteredList = chatList.filter(chat => currentLoggedInUser && chat.uid !== currentLoggedInUser.uid);
 
             if (!filteredList || filteredList.length === 0) {
-                listBox.innerHTML = `<p style="text-align:center; color:rgba(255,255,255,0.4); margin-top:20px;">No chats found.</p>`;
+                listBox.innerHTML = `<p style="text-align:center; color:#64748b; margin-top:20px;">No chats found.</p>`;
                 return;
             }
 
