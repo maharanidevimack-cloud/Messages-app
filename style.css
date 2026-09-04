@@ -16,9 +16,9 @@ body {
     color: #1e293b;
 }
 
-/* Screen Switcher Control */
+/* Screen Switcher Control - Yeh fix karega ki ek waqt par sirf ek hi screen dikhe */
 .screen {
-    display: none;
+    display: none !important;
     width: 100%;
     height: 100%;
     justify-content: center;
@@ -26,9 +26,10 @@ body {
     position: absolute;
     top: 0;
     left: 0;
+    background-color: #f4f6f9;
 }
 .screen.active {
-    display: flex;
+    display: flex !important;
 }
 
 /* 1. Splash Screen Styling */
@@ -277,4 +278,5 @@ body {
 .send-msg-btn {
     background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
     border: none; width: 38px; height: 38px; border-radius: 50%; color: #fff; cursor: pointer;
-}
+        }
+
