@@ -1,5 +1,4 @@
 * {
-    
     box-sizing: border-box;
     margin: 0;
     padding: 0;
@@ -7,16 +6,14 @@
 }
 
 body {
-    background-color: #030305;
-    background-image: 
-        radial-gradient(circle at 20% 20%, rgba(79, 70, 229, 0.12) 0%, transparent 40%),
-        radial-gradient(circle at 80% 80%, rgba(59, 130, 246, 0.08) 0%, transparent 40%);
+    background-color: #f5f5f7;
+    background-image: none;
     height: 100vh;
     display: flex;
     justify-content: center;
     align-items: center;
     overflow: hidden;
-    color: #fff;
+    color: #1d1d1f;
 }
 
 /* Screen Switcher Control */
@@ -44,48 +41,47 @@ body {
 }
 .app-logo-large {
     font-size: 45px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.06);
     width: 85px;
     height: 85px;
     border-radius: 26px;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 15px 30px rgba(0,0,0,0.5);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.06);
 }
-.splash-content h1 { font-size: 26px; font-weight: 700; color: #fff; letter-spacing: -0.5px; }
-.splash-content p { font-size: 13px; color: rgba(255, 255, 255, 0.4); }
+.splash-content h1 { font-size: 26px; font-weight: 700; color: #1d1d1f; letter-spacing: -0.5px; }
+.splash-content p { font-size: 13px; color: rgba(60, 60, 67, 0.6); }
 
 /* 2. Login Screen Styling */
 .auth-card {
-    background: rgba(255, 255, 255, 0.025);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.06);
     padding: 35px 28px;
     border-radius: 32px;
     width: 90%;
     max-width: 380px;
-    backdrop-filter: blur(30px);
-    box-shadow: 0 30px 60px rgba(0,0,0,0.8);
+    box-shadow: 0 30px 60px rgba(0,0,0,0.08);
     display: flex;
     flex-direction: column;
     gap: 14px;
 }
-.auth-card h2 { font-size: 22px; font-weight: 700; color: #fff; }
-.auth-card p { font-size: 13px; color: rgba(255,255,255,0.4); margin-bottom: 4px; }
+.auth-card h2 { font-size: 22px; font-weight: 700; color: #1d1d1f; }
+.auth-card p { font-size: 13px; color: rgba(60, 60, 67, 0.6); margin-bottom: 4px; }
 .auth-card input {
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: #f5f5f7;
+    border: 1px solid rgba(0, 0, 0, 0.08);
     padding: 14px 16px;
     border-radius: 16px;
-    color: #fff;
+    color: #1d1d1f;
     font-size: 15px;
     outline: none;
     transition: border-color 0.2s;
 }
-.auth-card input:focus { border-color: #6366f1; }
+.auth-card input:focus { border-color: #007aff; }
 .auth-btn {
-    background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
+    background: linear-gradient(135deg, #007aff 0%, #0056b3 100%);
     border: none;
     padding: 14px;
     border-radius: 16px;
@@ -93,7 +89,7 @@ body {
     font-weight: 600;
     font-size: 15px;
     cursor: pointer;
-    box-shadow: 0 10px 20px rgba(79,70,229,0.3);
+    box-shadow: 0 10px 20px rgba(0,122,255,0.25);
     margin-top: 6px;
     transition: opacity 0.2s;
 }
@@ -104,15 +100,12 @@ body {
     width: 100%;
     max-width: 410px;
     height: 92vh;
-    background: rgba(255, 255, 255, 0.01);
-    border: 1px solid rgba(255, 255, 255, 0.07);
+    background: transparent;
+    border: none;
     border-radius: 36px;
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    backdrop-filter: blur(30px);
-    -webkit-backdrop-filter: blur(30px);
-    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8);
     position: relative;
 }
 
@@ -124,7 +117,7 @@ body {
 .app-title-left {
     font-size: 24px;
     font-weight: 700;
-    color: #ffffff;
+    color: #1d1d1f;
     margin: 0;
     letter-spacing: -0.5px;
 }
@@ -136,23 +129,24 @@ body {
 .apple-search-box {
     display: flex;
     align-items: center;
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 12px;
+    background: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-radius: 14px;
     padding: 10px 14px;
     gap: 10px;
     color: #8e99a4;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
 }
 .apple-search-box input {
     background: transparent;
     border: none;
-    color: #fff;
+    color: #1d1d1f;
     font-size: 14.5px;
     width: 100%;
     outline: none;
 }
 .apple-search-box input::placeholder {
-    color: rgba(255, 255, 255, 0.4);
+    color: rgba(60, 60, 67, 0.4);
 }
 
 /* Contact / Chat List Cards */
@@ -166,13 +160,13 @@ body {
     scroll-behavior: smooth;
 }
 .contact-list::-webkit-scrollbar { width: 3px; }
-.contact-list::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 10px; }
+.contact-list::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.15); border-radius: 10px; }
 
 /* Distinct Card Styling */
 .contact-card {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    background: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
     padding: 14px 16px;
     border-radius: 22px;
     display: flex;
@@ -182,33 +176,33 @@ body {
     transition: all 0.25s ease;
 }
 .contact-card:hover {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.04) 100%);
-    border-color: rgba(129, 140, 248, 0.4);
+    background: #ffffff;
+    border-color: rgba(0, 122, 255, 0.3);
     transform: translateY(-2px);
-    box-shadow: 0 12px 25px rgba(79, 70, 229, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    box-shadow: 0 12px 28px rgba(0, 122, 255, 0.08);
 }
 
 /* Avatar Circle */
 .contact-avatar {
     width: 48px;
     height: 48px;
-    background: linear-gradient(135deg, #475569 0%, #1e293b 100%);
+    background: linear-gradient(135deg, #007aff 0%, #5856d6 100%);
     border-radius: 50%;
     display: flex;
     justify-content: center;
     align-items: center;
     font-weight: 600;
     font-size: 15px;
-    color: #e2e8f0;
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(0, 122, 255, 0.2);
     flex-shrink: 0;
 }
 
 .contact-info { flex: 1; min-width: 0; }
 .contact-header-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
-.contact-name { font-weight: 600; font-size: 15px; color: #f8fafc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.contact-time { font-size: 11px; color: rgba(255, 255, 255, 0.4); flex-shrink: 0; }
-.contact-sub { font-size: 13px; color: rgba(255, 255, 255, 0.5); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.contact-name { font-weight: 600; font-size: 15px; color: #1d1d1f; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.contact-time { font-size: 11px; color: rgba(60, 60, 67, 0.5); flex-shrink: 0; }
+.contact-sub { font-size: 13px; color: rgba(60, 60, 67, 0.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* Telegram Style Floating Action Container */
 .fab-wrapper {
@@ -227,12 +221,12 @@ body {
     display: flex;
     flex-direction: column;
     gap: 6px;
-    background: rgba(23, 29, 38, 0.95);
-    backdrop-filter: blur(15px);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(0, 0, 0, 0.08);
     padding: 8px;
     border-radius: 16px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+    box-shadow: 0 15px 35px rgba(0,0,0,0.1);
     transform-origin: bottom right;
     transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     opacity: 1;
@@ -247,7 +241,7 @@ body {
 .fab-menu-item {
     background: transparent;
     border: none;
-    color: #ffffff;
+    color: #1d1d1f;
     display: flex;
     align-items: center;
     gap: 12px;
@@ -260,16 +254,16 @@ body {
     transition: background 0.2s;
 }
 .fab-menu-item:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.05);
 }
 
-/* Main Action Bar (Blue Plus + Arrow) */
+/* Main Action Bar */
 .fab-main-bar {
     display: flex;
     align-items: center;
-    background: #2481cc;
+    background: #007aff;
     border-radius: 30px;
-    box-shadow: 0 6px 20px rgba(36, 129, 204, 0.45);
+    box-shadow: 0 8px 24px rgba(0, 122, 255, 0.35);
     overflow: hidden;
 }
 .fab-circle-blue {
@@ -301,19 +295,18 @@ body {
 
 /* 4. New Chat Screen Styling */
 .new-chat-card {
-    background: rgba(18, 20, 32, 0.85);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.06);
     padding: 30px 24px;
     border-radius: 32px;
     width: 90%;
     max-width: 380px;
-    backdrop-filter: blur(35px);
-    box-shadow: 0 35px 70px rgba(0,0,0,0.85);
+    box-shadow: 0 35px 70px rgba(0,0,0,0.1);
     display: flex;
     flex-direction: column;
     gap: 18px;
 }
-.new-chat-card h2 { font-size: 24px; font-weight: 700; color: #fff; text-align: left; }
+.new-chat-card h2 { font-size: 24px; font-weight: 700; color: #1d1d1f; text-align: left; }
 
 .search-input-wrapper {
     position: relative;
@@ -323,24 +316,24 @@ body {
 .search-icon-svg {
     position: absolute;
     left: 16px;
-    color: rgba(255, 255, 255, 0.4);
+    color: rgba(60, 60, 67, 0.4);
 }
 .search-input-wrapper input {
     width: 100%;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: #f5f5f7;
+    border: 1px solid rgba(0, 0, 0, 0.08);
     padding: 14px 16px 14px 44px;
     border-radius: 16px;
-    color: #fff;
+    color: #1d1d1f;
     font-size: 14px;
     outline: none;
     transition: border-color 0.2s;
 }
-.search-input-wrapper input:focus { border-color: #6366f1; }
+.search-input-wrapper input:focus { border-color: #007aff; }
 
 .user-preview-card {
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: #f5f5f7;
+    border: 1px solid rgba(0, 0, 0, 0.06);
     padding: 12px 14px;
     border-radius: 16px;
     display: flex;
@@ -350,21 +343,22 @@ body {
 .preview-avatar {
     width: 38px;
     height: 38px;
-    background: rgba(255, 255, 255, 0.08);
+    background: #ffffff;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #94a3b8;
+    color: #007aff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
 .preview-info { display: flex; flex-direction: column; gap: 2px; }
-.preview-name { font-size: 14px; font-weight: 600; color: #f8fafc; }
-.preview-status { font-size: 12px; color: rgba(255, 255, 255, 0.45); }
+.preview-name { font-size: 14px; font-weight: 600; color: #1d1d1f; }
+.preview-status { font-size: 12px; color: rgba(60, 60, 67, 0.6); }
 
 .cancel-btn {
     background: transparent;
     border: none;
-    color: rgba(255, 255, 255, 0.6);
+    color: rgba(60, 60, 67, 0.6);
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
@@ -372,63 +366,65 @@ body {
     padding: 6px;
     transition: color 0.2s;
 }
-.cancel-btn:hover { color: #fff; text-decoration: underline; }
+.cancel-btn:hover { color: #1d1d1f; text-decoration: underline; }
 
-/* 5. Chat Screen Layout - Perfect Telegram/WhatsApp Hybrid Structure */
+/* 5. Chat Screen Layout */
 .chat-container-wrapper {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     position: relative;
-    background: #06060a;
+    background: transparent;
     overflow: hidden;
     height: 92vh;
     max-width: 410px;
     width: 100%;
     border-radius: 36px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 35px 70px rgba(0, 0, 0, 0.85);
+    border: none;
+    box-shadow: none;
 }
 
 .floating-chat-header {
-    margin: 0px;
+    margin: 10px 12px 0 12px;
     padding: 12px 18px;
-    background: rgba(40, 45, 65, 0.9);
-    border: none;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.22);
-    backdrop-filter: blur(35px);
-    -webkit-backdrop-filter: blur(35px);
-    border-radius: 0 0 28px 28px;
+    background: rgba(255, 255, 255, 0.85);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    backdrop-filter: blur(25px);
+    -webkit-backdrop-filter: blur(25px);
+    border-radius: 24px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
     z-index: 10;
 }
 
 .back-arrow-btn {
-    background: transparent;
+    background: rgba(0, 0, 0, 0.04);
     border: none;
-    color: #fff;
+    color: #1d1d1f;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    opacity: 0.9;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    transition: background 0.2s;
 }
-.back-arrow-btn:hover { opacity: 1; }
+.back-arrow-btn:hover { background: rgba(0, 0, 0, 0.08); }
 
 .chat-user-profile {
     display: flex;
     align-items: center;
     gap: 12px;
     flex: 1;
-    margin-left: 8px;
+    margin-left: 12px;
 }
 .chat-header-avatar {
-    width: 42px;
-    height: 42px;
-    background: linear-gradient(135deg, #6366f1 0%, #3b82f6 100%);
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #007aff 0%, #5856d6 100%);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -436,12 +432,11 @@ body {
     font-size: 14px;
     font-weight: 700;
     color: #fff;
-    border: 1.5px solid rgba(255, 255, 255, 0.4);
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+    box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
 }
 .chat-header-info { display: flex; flex-direction: column; gap: 2px; }
-.chat-header-name { font-size: 15px; font-weight: 700; color: #ffffff; letter-spacing: -0.2px; }
-.chat-header-status { font-size: 12px; color: #4ade80; font-weight: 600; }
+.chat-header-name { font-size: 15px; font-weight: 700; color: #1d1d1f; letter-spacing: -0.2px; }
+.chat-header-status { font-size: 12px; color: #34c759; font-weight: 600; }
 
 .chat-messages-box {
     flex: 1;
@@ -457,69 +452,66 @@ body {
     border-radius: 20px;
     font-size: 13.5px;
     line-height: 1.45;
-    color: #f8fafc;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.25);
+    color: #1d1d1f;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.03);
 }
 .message-bubble.received {
-    background: rgba(255, 255, 255, 0.09);
-    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.06);
     align-self: flex-start;
     border-top-left-radius: 6px;
 }
 .message-bubble.sent {
-    background: rgba(255, 255, 255, 0.14);
-    border: 1px solid rgba(255, 255, 255, 0.22);
+    background: #007aff;
+    color: #fff;
     align-self: flex-end;
     border-top-right-radius: 6px;
 }
 
 .floating-input-container {
-    padding: 4px 10px 10px 10px;
+    padding: 4px 12px 12px 12px;
     background: transparent;
     z-index: 10;
 }
 .chat-input-bar {
-    background: rgba(40, 45, 65, 0.9);
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    backdrop-filter: blur(35px);
-    -webkit-backdrop-filter: blur(35px);
-    padding: 12px 16px;
-    border-radius: 34px;
+    background: rgba(255, 255, 255, 0.85);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    backdrop-filter: blur(25px);
+    -webkit-backdrop-filter: blur(25px);
+    padding: 10px 16px;
+    border-radius: 30px;
     display: flex;
     align-items: center;
     gap: 14px;
-    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
 }
 .input-action-btn {
     background: transparent;
     border: none;
-    color: rgba(255, 255, 255, 0.65);
+    color: rgba(60, 60, 67, 0.6);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 2px;
-    transition: color 0.2s;
 }
-.input-action-btn:hover { color: #fff; }
-
 .chat-input-bar input {
     flex: 1;
     background: transparent;
     border: none;
-    color: #fff;
+    color: #1d1d1f;
     font-size: 14.5px;
     outline: none;
 }
 .chat-input-bar input::placeholder {
-    color: rgba(255, 255, 255, 0.45);
+    color: rgba(60, 60, 67, 0.45);
 }
 
 .send-msg-btn {
-    background: linear-gradient(135deg, #6366f1 0%, #3b82f6 100%);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    width: 40px;
-    height: 40px;
+    background: linear-gradient(135deg, #007aff 0%, #0056b3 100%);
+    border: none;
+    width: 38px;
+    height: 38px;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -527,10 +519,6 @@ body {
     color: #fff;
     cursor: pointer;
     flex-shrink: 0;
-    transition: all 0.2s ease;
-    box-shadow: 0 6px 16px rgba(99, 102, 241, 0.5);
-}
-.send-msg-btn:hover {
-    transform: scale(1.06);
-    }
-               
+    box-shadow: 0 4px 12px rgba(0, 122, 255, 0.35);
+        }
+
