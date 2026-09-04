@@ -126,7 +126,6 @@ window.onload = function() {
             if (splash) splash.classList.remove('active');
             showScreen('home-screen');
             
-            // Intelligent Cold Start & Sync Check
             loadChatsWithSmartSync();
             
             if (document.getElementById('chat-messages-area')) {
@@ -177,7 +176,6 @@ window.handleGoogleLogin = async function() {
     }
 }
 
-// --- SMART COLD START & SYNC SYSTEM ---
 async function loadChatsWithSmartSync() {
     const listBox = document.getElementById('contact-list-box');
     if (!listBox || !currentLoggedInUser) return;
@@ -189,14 +187,11 @@ async function loadChatsWithSmartSync() {
         console.error("IDB read error:", e);
     }
 
-    // Agar local database bilkul khaali hai (New device / Fresh login), toh turant Firebase se data kheencho
     if (!localChats || localChats.length === 0) {
         listBox.innerHTML = `<p style="text-align:center; color:rgba(255,255,255,0.4); margin-top:20px;">Setting up your account data...</p>`;
         await syncDataFromServerAndSave();
     } else {
-        // Agar local data hai, toh bina ek second gavaye turant dikhao
         renderChatCards(localChats);
-        // Background mein naya update check karne ke liye sync chala do
         syncDataFromServerAndSave();
     }
 }
@@ -208,6 +203,7 @@ async function syncDataFromServerAndSave() {
 
         messagesSnapshot.forEach((docSnap) => {
             const msg = docSnap.data();
+            // Yahan ensure kiya gaya hai ki khud ki UID list mein add na ho
             if (msg.senderId === currentLoggedInUser.uid && msg.receiverId !== currentLoggedInUser.uid) {
                 activeUserIds.add(msg.receiverId);
             } else if (msg.receiverId === currentLoggedInUser.uid && msg.senderId !== currentLoggedInUser.uid) {
@@ -217,6 +213,9 @@ async function syncDataFromServerAndSave() {
 
         const freshChatList = [];
         for (let targetUid of activeUserIds) {
+            // Extra safety check: Khud ka UID kabhi bhi chat list mein fetch na ho
+            if (targetUid === currentLoggedInUser.uid) continue;
+
             const userDocRef = doc(db, "users", targetUid);
             const userDocSnap = await getDoc(userDocRef);
 
@@ -241,13 +240,16 @@ function renderChatCards(chatList) {
     const listBox = document.getElementById('contact-list-box');
     if (!listBox) return;
 
-    if (!chatList || chatList.length === 0) {
+    // Filter out if somehow self-ID exists in the list array
+    const filteredList = chatList.filter(chat => currentLoggedInUser && chat.uid !== currentLoggedInUser.uid);
+
+    if (!filteredList || filteredList.length === 0) {
         listBox.innerHTML = `<p style="text-align:center; color:rgba(255,255,255,0.4); margin-top:20px;">Koi chat nahi hai. 'New Chat' se naya user jodein!</p>`;
         return;
     }
 
     listBox.innerHTML = '';
-    chatList.forEach(chat => {
+    filteredList.forEach(chat => {
         const initials = chat.userId.substring(0, 2).toUpperCase();
         
         const card = document.createElement('div');
@@ -343,7 +345,7 @@ window.startNewChat = function() {
     });
 }
 
-// --- INITIALIZE CHAT SCREEN WITH SMART COLD START & LOCAL CACHING ---
+// --- INITIALIZE CHAT SCREEN ---
 async function initializeChatScreen() {
     const urlParams = new URLSearchParams(window.location.search);
     const receiverUid = urlParams.get('chatWith');
@@ -354,31 +356,30 @@ async function initializeChatScreen() {
     messagesArea.innerHTML = `<p style="text-align:center; color:rgba(255,255,255,0.4); margin-top:20px;">Messages load ho rahe hain...</p>`;
 
     const conversationKey = [currentLoggedInUser.uid, receiverUid].sort().join('_');
+    let displayedMessageIds = new Set();
 
-    // 1. Pehle local IDB se check karo, agar data hai toh turant dikhao
     try {
         const localMessages = await getMessagesFromIDB(conversationKey);
         if (localMessages && localMessages.length > 0) {
             localMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
             messagesArea.innerHTML = "";
             localMessages.forEach(msg => {
+                displayedMessageIds.add(msg.id);
                 appendMessageBubble(msg, messagesArea);
             });
             messagesArea.scrollTop = messagesArea.scrollHeight;
+        } else {
+            messagesArea.innerHTML = `<p style="text-align:center; color:rgba(255,255,255,0.4); margin-top:20px;">Abhi koi message nahi hai. Pehla message bhejein!</p>`;
         }
     } catch (e) {
         console.error("IDB messages load error:", e);
     }
 
-    // 2. Real-time Firebase listener jo naye messages aur purane data ko sync karega
     const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
     
     if (unsubscribeMessages) unsubscribeMessages();
 
     unsubscribeMessages = onSnapshot(q, (snapshot) => {
-        let count = 0;
-        messagesArea.innerHTML = "";
-
         snapshot.forEach((docSnap) => {
             const msgId = docSnap.id;
             const msg = docSnap.data();
@@ -387,21 +388,22 @@ async function initializeChatScreen() {
                 (msg.senderId === receiverUid && msg.receiverId === currentLoggedInUser.uid);
 
             if (isRelevant) {
-                count++;
                 const fullMsgObj = { id: msgId, conversationKey, ...msg };
-                
-                // Background mein IDB par save karte jao
                 saveMessageToIDB(msgId, fullMsgObj);
 
-                appendMessageBubble(fullMsgObj, messagesArea);
+                if (!displayedMessageIds.has(msgId)) {
+                    displayedMessageIds.add(msgId);
+                    
+                    const placeholder = messagesArea.querySelector('p');
+                    if (placeholder) {
+                        messagesArea.innerHTML = "";
+                    }
+
+                    appendMessageBubble(fullMsgObj, messagesArea);
+                    messagesArea.scrollTop = messagesArea.scrollHeight;
+                }
             }
         });
-
-        if (count === 0) {
-            messagesArea.innerHTML = `<p style="text-align:center; color:rgba(255,255,255,0.4); margin-top:20px;">Abhi koi message nahi hai. Pehla message bhejein!</p>`;
-        }
-
-        messagesArea.scrollTop = messagesArea.scrollHeight;
     });
 }
 
@@ -495,5 +497,4 @@ window.switchMainTab = function(tabName) {
         menu.classList.add('collapsed');
         arrow.classList.add('rotated');
     }
-          }
-
+      }
