@@ -1,6 +1,6 @@
 // Import Firebase SDKs (Modular Version via CDN)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getAuth, RecaptchaVerifier, signInWithPhoneNumber, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, collection, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 // Firebase Configuration Keys
@@ -17,10 +17,10 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const googleProvider = new GoogleAuthProvider();
 
 let currentLoggedInUser = null;
 let backgroundSyncInterval = null;
+let confirmationResultGlobal = null;
 
 // --- LOCAL DEVICE STORAGE (INDEXEDDB) SYSTEM ---
 const DB_NAME = "ChatAppLocalDB";
@@ -98,6 +98,7 @@ window.onload = function() {
         if (!authResolved && splash) {
             splash.classList.remove('active');
             showScreen('login-screen');
+            initRecaptcha();
         }
     }, 1500);
 
@@ -106,21 +107,20 @@ window.onload = function() {
         if (user) {
             try {
                 const userDoc = await getDoc(doc(db, "users", user.uid));
-                let username = user.email ? user.email.split('@')[0] : "user";
+                let phoneNum = user.phoneNumber || "user_" + user.uid.substring(0, 5);
                 
                 if (userDoc.exists()) {
                     currentLoggedInUser = { uid: user.uid, ...userDoc.data() };
                 } else {
-                    currentLoggedInUser = { uid: user.uid, userId: username };
+                    currentLoggedInUser = { uid: user.uid, userId: phoneNum };
                     await setDoc(doc(db, "users", user.uid), {
-                        userId: username,
-                        email: user.email,
+                        userId: phoneNum,
                         createdAt: new Date().toISOString()
                     });
                 }
             } catch (e) {
                 console.error("Error fetching/creating user doc:", e);
-                currentLoggedInUser = { uid: user.uid, userId: user.email ? user.email.split('@')[0] : "user" };
+                currentLoggedInUser = { uid: user.uid, userId: user.phoneNumber || "user" };
             }
 
             if (splash) splash.classList.remove('active');
@@ -135,11 +135,79 @@ window.onload = function() {
         } else {
             if (splash) splash.classList.remove('active');
             showScreen('login-screen');
+            initRecaptcha();
         }
     });
 
     setupScrollEffect();
 };
+
+function initRecaptcha() {
+    if (!window.recaptchaVerifier && document.getElementById('recaptcha-container')) {
+        window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+            'size': 'normal',
+            'callback': (response) => {}
+        });
+        window.recaptchaVerifier.render();
+    }
+}
+
+window.sendOTPCode = async function() {
+    const phoneNumber = document.getElementById('phone-number-input').value.trim();
+    if (!phoneNumber) {
+        alert("Kripya mobile number enter karein ( jaise +91xxxxxxxxxx )!");
+        return;
+    }
+
+    try {
+        initRecaptcha();
+        const appVerifier = window.recaptchaVerifier;
+        const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
+        confirmationResultGlobal = confirmationResult;
+        
+        document.getElementById('phone-section').style.display = 'none';
+        document.getElementById('otp-section').style.display = 'block';
+        alert("OTP successfully bhej diya gaya hai!");
+    } catch (error) {
+        console.error("SMS error:", error);
+        alert("OTP send karne mein samasya aayi: " + error.message);
+        if (window.recaptchaVerifier) {
+            window.recaptchaVerifier.render().then(widgetId => grecaptcha.reset(widgetId));
+        }
+    }
+}
+
+window.verifyOTPCode = async function() {
+    const code = document.getElementById('otp-code-input').value.trim();
+    if (!code) {
+        alert("Kripya 6-digit OTP enter karein!");
+        return;
+    }
+
+    try {
+        const result = await confirmationResultGlobal.confirm(code);
+        const user = result.user;
+        let phoneNum = user.phoneNumber;
+
+        const userRef = doc(db, "users", user.uid);
+        const userDoc = await getDoc(userRef);
+
+        if (!userDoc.exists()) {
+            await setDoc(userRef, {
+                userId: phoneNum,
+                createdAt: new Date().toISOString()
+            });
+        }
+
+        currentLoggedInUser = { uid: user.uid, userId: phoneNum };
+        showScreen('home-screen');
+        loadChatsWithSmartSync();
+        startBackgroundSyncLoop();
+    } catch (error) {
+        console.error("OTP verification error:", error);
+        alert("Galat OTP! Kripya dobara koshish karein.");
+    }
+}
 
 function startBackgroundSyncLoop() {
     if (backgroundSyncInterval) clearInterval(backgroundSyncInterval);
@@ -150,7 +218,6 @@ function startBackgroundSyncLoop() {
     }, 6000);
 }
 
-// Screen hide/show proper handling
 function showScreen(screenId) {
     document.querySelectorAll('.screen').forEach(screen => {
         screen.style.display = 'none';
@@ -160,33 +227,6 @@ function showScreen(screenId) {
     if (target) {
         target.style.display = 'block';
         target.classList.add('active');
-    }
-}
-
-window.handleGoogleLogin = async function() {
-    try {
-        const result = await signInWithPopup(auth, googleProvider);
-        const user = result.user;
-        let cleanUsername = user.email ? user.email.split('@')[0] : "user";
-
-        const userRef = doc(db, "users", user.uid);
-        const userDoc = await getDoc(userRef);
-
-        if (!userDoc.exists()) {
-            await setDoc(userRef, {
-                userId: cleanUsername,
-                email: user.email,
-                createdAt: new Date().toISOString()
-            });
-        }
-
-        currentLoggedInUser = { uid: user.uid, userId: cleanUsername };
-        showScreen('home-screen');
-        loadChatsWithSmartSync();
-        startBackgroundSyncLoop();
-    } catch (error) {
-        console.error("Google Sign-In Error:", error);
-        alert("Google Login Failed: " + error.message);
     }
 }
 
@@ -306,7 +346,7 @@ function renderChatCards(chatList) {
 
     listBox.innerHTML = '';
     filteredList.forEach(chat => {
-        const initials = chat.userId.substring(0, 2).toUpperCase();
+        const initials = chat.userId.substring(0, 4).toUpperCase();
         
         const card = document.createElement('div');
         card.className = 'contact-card';
@@ -335,49 +375,10 @@ window.cancelNewChat = function() {
     window.location.href = 'index.html';
 }
 
-window.handleUserSearch = async function(queryText) {
-    const previewBox = document.getElementById('user-preview-box');
-    const nameLabel = document.getElementById('preview-user-name');
-    const statusLabel = document.getElementById('preview-user-status');
-
-    if (!previewBox) return;
-
-    queryText = queryText.trim().toLowerCase();
-    if (queryText.length > 0) {
-        previewBox.style.display = 'flex';
-        nameLabel.innerText = "Searching: " + queryText;
-        statusLabel.innerText = "Checking database...";
-        
-        try {
-            const querySnapshot = await getDocs(collection(db, "users"));
-            let found = false;
-            querySnapshot.forEach((docSnap) => {
-                const data = docSnap.data();
-                if (data.userId === queryText && docSnap.id !== currentLoggedInUser.uid) {
-                    found = true;
-                    nameLabel.innerText = data.userId;
-                    statusLabel.innerText = "Online - Click to chat";
-                    previewBox.onclick = () => {
-                        window.location.href = `chat.html?chatWith=${docSnap.id}&username=${data.userId}`;
-                    };
-                }
-            });
-            if (!found) {
-                nameLabel.innerText = queryText;
-                statusLabel.innerText = "User not found";
-            }
-        } catch (e) {
-            console.error(e);
-        }
-    } else {
-        previewBox.style.display = 'none';
-    }
-}
-
 window.startNewChat = function() {
-    const userId = document.getElementById('new-chat-userid').value.trim().toLowerCase();
+    const userId = document.getElementById('new-chat-userid').value.trim();
     if (!userId) {
-        alert("Please enter a valid User ID!");
+        alert("Please enter a valid User ID or Phone Number!");
         return;
     }
     
@@ -424,7 +425,6 @@ async function initializeChatScreen() {
         }
     } catch (e) {
         console.error("IDB messages load error:", e);
-        messagesArea.innerHTML = `<p style="text-align:center; color:rgba(255,255,255,0.4); margin-top:20px;">No local messages found.</p>`;
     }
     
     syncDataFromServerAndSave(true);
@@ -494,15 +494,6 @@ window.sendMessage = async function() {
     }
 }
 
-window.toggleFabMenu = function() {
-    const menu = document.getElementById('fabMenu');
-    const arrow = document.getElementById('arrowToggleBtn');
-    if (menu && arrow) {
-        menu.classList.toggle('collapsed');
-        arrow.classList.toggle('rotated');
-    }
-}
-
 function setupScrollEffect() {
     let lastScrollTop = 0;
     const contactListBox = document.getElementById('contact-list-box');
@@ -522,22 +513,5 @@ function setupScrollEffect() {
             lastScrollTop = st <= 0 ? 0 : st;
         });
     }
-}
-
-window.switchMainTab = function(tabName) {
-    if (tabName === 'chats') {
-        alert("Aap already Chats tab par hain.");
-    } else if (tabName === 'contacts') {
-        alert("Contacts section open ho raha hai...");
-    } else if (tabName === 'settings') {
-        alert("Settings panel jaldi aayega!");
-    }
-    
-    const menu = document.getElementById('fabMenu');
-    const arrow = document.getElementById('arrowToggleBtn');
-    if (menu && arrow) {
-        menu.classList.add('collapsed');
-        arrow.classList.add('rotated');
-    }
-                        }
-              
+          }
+                                                 
